@@ -38,8 +38,12 @@ Shoulder hike, shoulder flexion and visibility stay with the camera (PLAN.md §6
 `bodyRotationsSinceRest()` gives the same data as rotations in the 3D arm's frame (x forward, y up, z = x × y), for `web/src/arm`.
 
 ## Mounting rules
-- **Chest sensor:** on the sternum, **component side facing out**, so its +Z points forward. If it sits more than 60° off, `chestUpright` is false and the app should warn.
-- **Arm sensors:** any rotation around the limb is fine; rest capture handles it. They must not slip. Use a snug sleeve and Velcro, and never mount on a joint (§12).
+- **Chest sensor:** on the front of the chest, **component side facing out**, so its +Z points forward. If it sits more than 60° off, `chestUpright` is false and the app should warn.
+  - It must move with the **rib cage, not the shoulder**. Put it high on the chest, just below the collarbone, on the side **opposite the reaching arm** (upper-left for a right-arm reach), and keep it off the chest muscle near the armpit.
+  - The chest's curve angles the face a little to the side. At 20° off, forward lean reads about 6% low (cos 20°); rotation is unaffected.
+  - Keep the strap snug, so breathing doesn't shift it.
+- **Arm sensors:** any rotation around the limb is fine, because rest capture reads each bone's direction from gravity. They must not slip; re-capture rest after any adjustment. Never mount on a joint (§12).
+- **Rest capture quality sets the zero:** the elbow must be truly straight and the trunk upright. A 15° bend at capture puts every elbow reading about 15° off.
 - **Before `G`:** lay the sleeve and chest strap flat with all X arrows parallel.
 
 ## How accurate is it?
