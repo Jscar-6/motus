@@ -25,7 +25,7 @@ What the two distances mean for the body (p. 11):
 - **Near:** an unimpaired person can grasp the cone with the arm flexed and **no forward trunk movement**.
 - **Far:** an unimpaired person needs forward trunk movement of **about 25% of the reaching distance** (from the starting hand position to the cone).
 
-**RPSS gives fixed distances, not fractions of arm length.** The arm-length scaling is done by the chair distance: the near cone sits 3 cm short of the extended wrist crease, and the far cone sits 26 cm beyond it. Any `NEAR_RATIO`/`FAR_RATIO` would therefore be our invention. PLAN.md §20 has a `[PROPOSED]` entry to use the RPSS setup directly. Until it's accepted, `config.ts` keeps its placeholders.
+**RPSS gives fixed distances, not fractions of arm length.** The arm-length scaling is done by the chair distance: the near cone sits 3 cm short of the extended wrist crease, and the far cone sits 26 cm beyond it. Any `NEAR_RATIO`/`FAR_RATIO` would therefore be our invention. PLAN.md §20 accepts the RPSS setup as is, and `config.ts` holds it as `RPSS_WRIST_MARK_CM`, `RPSS_NEAR_CM` and `RPSS_FAR_CM`.
 
 ### Trunk rule
 
