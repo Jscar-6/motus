@@ -526,7 +526,7 @@ There are two natural lanes. Each person takes one lane first so you aren't edit
 - [x] **C2 (P0)** `lib/features.ts`: §6.1 features (camera-only mode) + rest-pose capture with stillness and visibility checks. @himmet
 - [x] **C3 (P0)** `vision/target.ts`: Near/Far choice + one click → touch point; touch detection. @himmet
 - [x] **C4 (P0)** `lib/reps.ts`: rep start/end, **generic over `ExerciseProfile.goal`**. @himmet
-- [ ] **C5 (P0)** `lib/rules.ts`: §6.2 rules, **generic over `ExerciseProfile`**, including `minFlagMs` and the lean modes. @himmet
+- [x] **C5 (P0)** `lib/rules.ts`: §6.2 rules, **generic over `ExerciseProfile`**, including `minFlagMs` and the lean modes. @himmet
 
 **Lane "App" (F1 first, then parallel):**
 - [x] **F1 (P0)** App shell: Tailwind + shadcn/ui; pages Setup, Session, Results; routing; a page that runs on fake `PoseFrame`s. @ehan
