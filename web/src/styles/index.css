@@ -1,0 +1,93 @@
+/* TrueReach design tokens (F0 Figma → F1). Warm peach canvas, frosted cards, Tanker display + Erode text. */
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Tanker", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Erode", ui-serif, Georgia, serif;
+
+  --color-canvas: #f4dccb;
+  --color-canvas-deep: #ebc6ad;
+  --color-alert: #7a2318;
+  --color-paper: #fbf3ee;
+  --color-ink: #2b1a12;
+  --color-ink-2: rgb(43 26 18 / 0.66);
+  --color-ink-3: rgb(43 26 18 / 0.42);
+  --color-hairline: rgb(43 26 18 / 0.08);
+  --color-ok: #3e7b57;
+  --color-warn: #c4861c;
+  --color-bad: #b5382b;
+
+  --radius-card: 25px;
+  --radius-inner: 16px;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --shadow-card: 0 1px 1px rgb(92 48 24 / 0.04), 0 2px 6px -2px rgb(92 48 24 / 0.06), 0 18px 44px -18px rgb(92 48 24 / 0.2);
+  --shadow-float: 0 1px 2px rgb(92 48 24 / 0.06), 0 8px 18px -6px rgb(92 48 24 / 0.12), 0 32px 72px -24px rgb(92 48 24 / 0.32);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-synthesis: none;
+  }
+  body {
+    @apply bg-canvas text-ink font-serif;
+    font-size: 1.0625rem;
+    line-height: 1.5;
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+  /* Paper grain over the canvas: fixed, non-interactive, never animated. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.35;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.3 0 0 0 0 0.22 0 0 0 0.09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  #root { position: relative; z-index: 1; isolation: isolate; }
+  ::selection { background: rgb(181 56 43 / 0.18); }
+  :focus-visible { outline: 2px solid var(--color-ink); outline-offset: 3px; border-radius: 8px; }
+}
+
+/* Display type tightens as it grows (apple-design §15). */
+@utility display-xl { font-family: var(--font-display); font-size: clamp(3.5rem, 9vw, 8rem); line-height: 0.92; letter-spacing: -0.02em; }
+@utility display-lg { font-family: var(--font-display); font-size: clamp(2rem, 3.4vw, 3rem); line-height: 1; letter-spacing: -0.01em; }
+@utility display-md { font-family: var(--font-display); font-size: 1.625rem; line-height: 1.05; letter-spacing: 0; }
+@utility eyebrow { font-family: var(--font-display); font-size: 0.75rem; line-height: 1; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-ink-3); }
+@utility tabular { font-variant-numeric: tabular-nums; }
+
+/* Frosted card: the Figma rgba(255,255,255,.7) panels as a real material. */
+@utility material {
+  background: rgb(255 255 255 / 0.62);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  backdrop-filter: blur(24px) saturate(160%);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card), inset 0 1px 0 rgb(255 255 255 / 0.75);
+}
+/* Solid white card: the Figma instruction card; heavier, sits above the material layer. */
+@utility material-solid {
+  background: #fff;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-float), inset 0 1px 0 rgb(255 255 255 / 1);
+}
+/* Any pressable surface: instant feedback on press (emil-design-eng). */
+@utility pressable {
+  transition: transform 140ms var(--ease-out);
+  &:active { transform: scale(0.97); }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .material { background: var(--color-paper); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (prefers-contrast: more) {
+  .material, .material-solid { box-shadow: 0 0 0 1.5px var(--color-ink); }
+}
