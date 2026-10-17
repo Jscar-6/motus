@@ -58,21 +58,19 @@ flowchart LR
 
 ## Getting started
 
-> Scaffolding lands in task **A2**. These commands work once it's merged on `main`.
-
-**Prerequisites:** Node 20+, Python 3.11, Chrome (for Web Serial), and a free Kaggle account + API token for the dataset.
+**Prerequisites:** Node 18+, Python 3.11+, Chrome (for Web Serial), and a free Kaggle account + API token for the dataset.
 
 ```bash
 # Web app → http://localhost:5173
 cd web && npm install && npm run dev
 
 # Server → http://localhost:8000
-cd server && pip install -r requirements.txt && uvicorn app.main:app --reload
+cd server && pip install -r requirements.txt && uvicorn app.main:app --reload --port 8000
 
-# ML: download TRSP into ml/data/trsp/ (gitignored, research-use only)
+# ML: download TRSP into ml/data/trsp/ (gitignored, research-use only; download script lands in D1)
 cd ml && pip install -r requirements.txt && python download_trsp.py
 
-# Firmware
+# Firmware (PlatformIO project lands in B1)
 cd firmware && pio run -t upload
 ```
 
