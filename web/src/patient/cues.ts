@@ -1,7 +1,7 @@
 // Turns a live sample into one calm, warm cue for the patient (PLAN §20 I3b) and a severity for the alert tint.
 import type { CheckState, LiveSample } from '../live/types';
 
-export type CueId = 'rest' | 'uncertain' | 'lean' | 'hike' | 'rot' | 'warn' | 'clean';
+export type CueId = 'idle' | 'rest' | 'uncertain' | 'lean' | 'hike' | 'rot' | 'warn' | 'clean';
 export type Tone = 'neutral' | 'ok' | 'warn' | 'bad';
 
 export interface Cue { id: CueId; status: string; text: string; tone: Tone }
@@ -14,13 +14,16 @@ function check(sample: LiveSample, key: CheckState['key']): CheckState | undefin
   return sample.rules?.checks.find((c) => c.key === key && c.enabled);
 }
 
-/** Cue for the current frame; the lean text carries the live degrees. */
+/** Cue for the current frame; without analysis it is the static exercise instruction, and the lean text carries the live degrees. */
 export function getCue(sample: LiveSample | null, restCaptured: boolean): Cue {
+  const rules = sample?.rules;
+  if (!sample || !rules) {
+    return { id: 'idle', status: 'Forward reach', tone: 'neutral', text: 'Reach forward to the target, then bring your arm back to rest.' };
+  }
   if (!restCaptured) {
     return { id: 'rest', status: 'Hold still', tone: 'neutral', text: 'Sit tall, let your arm hang, and hold still for a moment.' };
   }
-  const rules = sample?.rules;
-  if (!sample || !rules || rules.uncertain) {
+  if (rules.uncertain) {
     return { id: 'uncertain', status: "Can't see you", tone: 'neutral', text: "I can't quite see your arm. Turn so your side faces the screen." };
   }
   const lean = check(sample, 'lean');

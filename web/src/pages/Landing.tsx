@@ -5,12 +5,13 @@ import { useNavigate } from 'react-router-dom';
 import Lens from '../landing/Lens';
 import Button from '../ui/Button';
 import Wordmark from '../ui/Wordmark';
+import PatientSwitcher from '../recording/PatientSwitcher';
 import { rectOf, type FlipOrigin } from '../landing/useFlipFrom';
 import { EASE_OUT, useMaterialize } from '../patient/motion';
 
 const MESSAGES = {
-  blocked: 'Camera access was blocked. You can allow it from the address bar, or look around with demo data.',
-  missing: "We couldn't find a camera on this device. You can still look around with demo data.",
+  blocked: 'Camera access was blocked. You can allow it from the address bar, or try again.',
+  missing: "We couldn't find a camera on this device. Connect one and try again.",
 } as const;
 const STEPS = [
   'Laptop to your affected side, webcam at shoulder height',
@@ -43,6 +44,7 @@ export default function Landing() {
   const wordmarkRef = useRef<HTMLDivElement>(null);
   const copy = useMaterialize({ delay: 0.1, y: 12, blur: 6 });
   const lens = useMaterialize({ delay: 0.2, y: 12, blur: 6 });
+  const login = useMaterialize({ delay: 0.1, y: 8, blur: 4 });
   const footer = useMaterialize({ delay: 0.3, y: 8, blur: 4 });
 
   useEffect(() => {
@@ -54,13 +56,18 @@ export default function Landing() {
     return () => { live = false; };
   }, []);
 
-  /** Go to the session, handing over where the lens and wordmark are so Session can grow from them. */
-  function enterSession() {
-    setPhase('ready');
+  /** Navigate, handing over where the lens and wordmark are so the next page can grow from them. */
+  function goTo(path: string) {
     const state: FlipOrigin | undefined = lensRef.current && wordmarkRef.current
       ? { from: 'landing', at: Date.now(), lensRect: rectOf(lensRef.current), wordmarkRect: rectOf(wordmarkRef.current) }
       : undefined;
-    navigate('/session', { state });
+    navigate(path, { state });
+  }
+
+  /** Go to the patient session. */
+  function enterSession() {
+    setPhase('ready');
+    goTo('/session');
   }
 
   /** Ask for the webcam (or reuse a standing grant), then hand over to the session page. */
@@ -89,10 +96,20 @@ export default function Landing() {
     >
       <motion.div aria-hidden exit={{ opacity: 0, transition: { duration: 0.25 } }} className="fixed inset-0 bg-canvas" />
 
-      <header className="relative">
+      <header className="relative flex w-full items-center justify-center">
         <div ref={wordmarkRef}>
           <Wordmark />
         </div>
+        <motion.div {...login} exit={reduced ? undefined : LEAVE} className="absolute right-0 top-1/2 -translate-y-1/2">
+          <Button
+            variant="quiet"
+            onClick={() => goTo('/physician')}
+            className="!h-8 gap-1.5 !px-3.5 text-[0.7rem] uppercase tracking-[0.08em]"
+          >
+            Physician login
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M7 17 17 7M8 7h9v9" /></svg>
+          </Button>
+        </motion.div>
       </header>
 
       <div className="relative flex w-full flex-1 flex-col-reverse items-center justify-center gap-10 lg:flex-row lg:gap-24">
@@ -117,7 +134,6 @@ export default function Landing() {
                 className="flex max-w-[44ch] flex-col items-start gap-3"
               >
                 <p className="text-[0.95rem] leading-snug text-ink-2">{message}</p>
-                <Button variant="quiet" onClick={() => navigate('/session?demo=1')}>Try with demo data</Button>
               </motion.div>
             )}
           </AnimatePresence>
@@ -130,6 +146,7 @@ export default function Landing() {
               </li>
             ))}
           </ol>
+          <PatientSwitcher />
         </motion.div>
 
         <motion.div {...lens} className="flex w-full max-w-[460px] flex-col items-center gap-4">

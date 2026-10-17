@@ -8,6 +8,8 @@ import Session from './pages/Session';
 import Setup from './pages/Setup';
 
 const Doctor = lazy(() => import('./pages/Doctor'));
+const Physician = lazy(() => import('./pages/Physician'));
+const PatientOverview = lazy(() => import('./pages/PatientOverview'));
 
 /** Routes keyed by pathname so AnimatePresence waits for the old page to leave. */
 function AnimatedRoutes() {
@@ -27,6 +29,8 @@ function AnimatedRoutes() {
             </Suspense>
           }
         />
+        <Route path="/physician" element={<Suspense fallback={null}><Physician /></Suspense>} />
+        <Route path="/physician/:patientId" element={<Suspense fallback={null}><PatientOverview /></Suspense>} />
         <Route path="/setup" element={<Setup />} />
         <Route path="/results" element={<Results />} />
         <Route path="*" element={<Navigate to="/" replace />} />

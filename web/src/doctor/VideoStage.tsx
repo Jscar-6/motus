@@ -11,7 +11,14 @@ const FOCUS_TOP = 64;
 const FOCUS_BOTTOM = 40;
 
 interface Rect { left: number; top: number; width: number; height: number }
-interface Props { placeholderRef: RefObject<HTMLDivElement | null>; focus: boolean; onToggle: () => void; children?: ReactNode }
+interface Props {
+  placeholderRef: RefObject<HTMLDivElement | null>;
+  focus: boolean;
+  onToggle: () => void;
+  children?: ReactNode;
+  content?: ReactNode;                                                      // replaces the live view (physician playback)
+  enterFrom?: { x: number; y: number; width: number; height: number };    // viewport rect the panel grows out of on mount
+}
 
 /** Rectangle of the focus view: 90% of the viewport width, centred, below the wordmark. */
 function focusRect(): Rect {
@@ -29,7 +36,7 @@ function Hint({ focus }: { focus: boolean }) {
 }
 
 /** Desktop video panel with the focus animation. */
-export default function VideoStage({ placeholderRef, focus, onToggle, children }: Props) {
+export default function VideoStage({ placeholderRef, focus, onToggle, children, content, enterFrom }: Props) {
   const reduce = useReducedMotion();
   const left = useMotionValue(0);
   const top = useMotionValue(0);
@@ -60,6 +67,18 @@ export default function VideoStage({ placeholderRef, focus, onToggle, children }
     place();
   }, [place]);
 
+  useLayoutEffect(() => {
+    const parent = placeholderRef.current?.offsetParent;
+    if (!enterFrom || !parent) return;
+    const origin = parent.getBoundingClientRect();
+    left.jump(enterFrom.x - origin.left);
+    top.jump(enterFrom.y - origin.top);
+    width.jump(enterFrom.width);
+    height.jump(enterFrom.height);
+    smoothUntil.current = performance.now() + SMOOTH_WINDOW_MS;
+    place();
+  }, []); // once, on mount
+
   useEffect(() => {
     const ph = placeholderRef.current;
     const observer = new ResizeObserver(place);
@@ -83,9 +102,9 @@ export default function VideoStage({ placeholderRef, focus, onToggle, children }
   }, [focus, place, reduce, dip]);
 
   return (
-    <Materialize x={-72} y={0} className="absolute z-20" style={{ left, top, width, height }}>
+    <Materialize x={enterFrom ? 0 : -72} y={0} className="absolute z-20" style={{ left, top, width, height }}>
       <motion.div style={{ opacity: dip, contain: 'layout paint' }} className="relative h-full w-full overflow-hidden rounded-[var(--radius-card)] bg-[#2b1a12] shadow-[var(--shadow-float)]">
-        <LiveView />
+        {content ?? <LiveView />}
         <button
           type="button"
           aria-label={focus ? 'Exit focus view' : 'Focus on the live video'}
