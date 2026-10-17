@@ -472,13 +472,13 @@ flowchart LR
 
 ### Jack
 **Phase 0, series (blocks everyone):**
-- [ ] **A1 (P0)** Create the repo:
+- [x] **A1 (P0)** Create the repo:
   - branch protection on `main` (PR required, 1 approval, no force push, no deletion)
   - squash merge only
   - commit `PLAN.md`, `CLAUDE.md`, `.github/pull_request_template.md`
   - `.gitignore`: `.env`, `ml/data/trsp/`, raw video, model files over 50 MB
   - empty folders per §17 with a one-line README each
-- [ ] **A2 (P0)** `web/src/lib/types.ts` exactly per §16. `web/src/lib/config.ts` with:
+- [x] **A2 (P0)** `web/src/lib/types.ts` exactly per §16. `web/src/lib/config.ts` with:
   - the `forward_reach` `ExerciseProfile` using clearly named placeholder thresholds
   - `// SOURCE: placeholder until D3` comments
 
