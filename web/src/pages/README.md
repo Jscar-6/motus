@@ -4,7 +4,7 @@ App pages and their routes, wired in `src/App.tsx` (react-router, one page at a 
 
 | Route | Page | Task |
 |---|---|---|
-| `/` | `Landing.tsx`: wordmark, webcam permission, hand-off to the session | F1 |
+| `/` | `Landing.tsx`: hero copy, animated lens, webcam permission; on success the lens and wordmark hand their rectangles to the session (FLIP, see `src/landing/`) | F1 |
 | `/session` | `Session.tsx`: patient view (video panel, instruction card, arm slot); `?demo=1` uses fake poses | F1, F2 |
 | `/doctor` | `Doctor.tsx`: therapist portal (F9, lazy-loaded) | F9 |
 | `/setup` | `Setup.tsx`: placeholder until F3 | F3 |

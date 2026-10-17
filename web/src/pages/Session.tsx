@@ -1,7 +1,8 @@
 // Patient view (Figma 1:6): a big video panel sliding in from the right, a white instruction card over its left edge, the arm slot below.
-import { useRef, type CSSProperties, type RefObject } from 'react';
+import { useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { readFlipOrigin, useFlipFrom } from '../landing/useFlipFrom';
 import { usePatientSession } from '../live/usePatientSession';
 import AlertTint from '../patient/AlertTint';
 import InstructionCard from '../patient/InstructionCard';
@@ -119,14 +120,23 @@ function VideoSurface({ videoRef, demo, status, error, onDemo, reduced }: {
 /** The session layout for one source (camera or demo); remounted when the source changes. */
 function SessionView({ demo }: { demo: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const brandRef = useRef<HTMLAnchorElement>(null);
+  const { state } = useLocation();
+  const [origin] = useState(() => readFlipOrigin(state));
   const navigate = useNavigate();
   const reduced = useReducedMotion();
   const { status, error } = usePatientSession({ side: 'right', videoRef, demo });
   const showDemo = demo || status === 'demo';
+  const flipping = origin !== undefined && !reduced;
+  useFlipFrom(panelRef, origin?.lensRect, 'panel');
+  useFlipFrom(brandRef, origin?.wordmarkRect, 'text');
   const brand = useMaterialize({ delay: 0, y: 8, blur: 6 });
   const card = useMaterialize({ delay: 0.12, x: -16, y: 0, blur: 8, duration: 0.6 });
   const arm = useMaterialize({ delay: 0.2, y: 16, blur: 8 });
-  const panel = reduced
+  const panel = flipping
+    ? {}
+    : reduced
     ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.2 } }
     : {
         initial: { opacity: 0, filter: 'blur(8px)', transform: 'translateX(8%)' },
@@ -143,13 +153,14 @@ function SessionView({ demo }: { demo: boolean }) {
     >
       <AlertTint />
 
-      <motion.div {...brand} className="relative col-span-2 lg:absolute lg:left-6 lg:top-6">
-        <Link to="/" aria-label="TrueReach, back to start" className="pressable inline-block" style={{ transitionProperty: 'transform' }}>
+      <motion.div {...(flipping ? {} : brand)} className="relative col-span-2 lg:absolute lg:left-6 lg:top-6">
+        <Link ref={brandRef} to="/" aria-label="TrueReach, back to start" className="pressable inline-block" style={{ transitionProperty: 'transform' }}>
           <Wordmark size="md" />
         </Link>
       </motion.div>
 
       <motion.section
+        ref={panelRef}
         {...panel}
         aria-label="Camera"
         className="material relative col-span-2 aspect-[4/3] overflow-hidden sm:aspect-video lg:absolute lg:bottom-6 lg:left-[var(--video-left)] lg:right-6 lg:top-6 lg:aspect-auto"

@@ -1,53 +1,34 @@
-// Landing: the wordmark materializes letter by letter over a stippled reach arc; one button asks for the webcam.
-import { useEffect, useState } from 'react';
+// Landing: wordmark, setup steps and one button that asks for the webcam; the lens then grows into the session's video panel.
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
+import Lens from '../landing/Lens';
 import Button from '../ui/Button';
-import StippleArc from '../patient/StippleArc';
+import Wordmark from '../ui/Wordmark';
+import { rectOf, type FlipOrigin } from '../landing/useFlipFrom';
 import { EASE_OUT, useMaterialize } from '../patient/motion';
 
-const WORD = 'TrueReach';
-const LETTER_STAGGER = 0.035;
 const MESSAGES = {
   blocked: 'Camera access was blocked. You can allow it from the address bar, or look around with demo data.',
   missing: "We couldn't find a camera on this device. You can still look around with demo data.",
 } as const;
+const STEPS = [
+  'Laptop to your affected side, webcam at shoulder height',
+  'Sit upright, back off the chair, arm resting',
+  'Hold still 3 seconds while we capture your rest pose',
+] as const;
+const CAPTIONS = { idle: 'waiting for camera…', requesting: 'requesting access…', denied: 'waiting for camera…', ready: 'camera ready' } as const;
+const LEAVE = { opacity: 0, y: -12, transition: { duration: 0.25, ease: 'easeOut' } } as const;
 
-type Phase = 'idle' | 'requesting' | 'denied';
+type Phase = keyof typeof CAPTIONS;
 
-/** Camera icon, 1.75px stroke like the rest of the icon set. */
+/** Camera glyph that inherits the button's text colour. */
 function CameraIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.4a1 1 0 0 0 .8-.4L8.9 4a1 1 0 0 1 .8-.4h4.6a1 1 0 0 1 .8.4l1.2 1.6a1 1 0 0 0 .8.4h1.4A2.5 2.5 0 0 1 21 8.5v8A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z" />
-      <circle cx="12" cy="12.5" r="3.5" />
+    <svg aria-hidden width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.83" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21.0833 6.41667L14.6667 11L21.0833 15.5833V6.41667Z" />
+      <path d="M2.75 4.58333H12.8333C13.8459 4.58333 14.6667 5.40414 14.6667 6.41667V15.5833C14.6667 16.5959 13.8459 17.4167 12.8333 17.4167H2.75C1.73748 17.4167 0.916666 16.5959 0.916666 15.5833V6.41667C0.916666 5.40414 1.73748 4.58333 2.75 4.58333Z" />
     </svg>
-  );
-}
-
-/** The wordmark, one blurred letter at a time (plays once). */
-function HeroWordmark() {
-  const reduced = useReducedMotion();
-  const whole = useMaterialize({ y: 0, blur: 0, duration: 0.4 });
-  return (
-    <h1 aria-label={WORD} className="display-xl select-none text-ink">
-      {reduced ? (
-        <motion.span aria-hidden className="inline-block" {...whole}>{WORD}</motion.span>
-      ) : (
-        WORD.split('').map((letter, i) => (
-          <motion.span
-            key={i}
-            aria-hidden
-            className="inline-block"
-            initial={{ opacity: 0, filter: 'blur(10px)', transform: 'translateY(24px)' }}
-            animate={{ opacity: 1, filter: 'blur(0px)', transform: 'translateY(0px)' }}
-            transition={{ duration: 0.7, delay: 0.1 + i * LETTER_STAGGER, ease: EASE_OUT }}
-          >
-            {letter}
-          </motion.span>
-        ))
-      )}
-    </h1>
   );
 }
 
@@ -58,9 +39,11 @@ export default function Landing() {
   const [phase, setPhase] = useState<Phase>('idle');
   const [message, setMessage] = useState<string>(MESSAGES.blocked);
   const [granted, setGranted] = useState(false);
-  const tagline = useMaterialize({ delay: 0.75, y: 12, blur: 6 });
-  const actions = useMaterialize({ delay: 0.9, y: 12, blur: 6 });
-  const footer = useMaterialize({ delay: 1.05, y: 8, blur: 4 });
+  const lensRef = useRef<HTMLDivElement>(null);
+  const wordmarkRef = useRef<HTMLDivElement>(null);
+  const copy = useMaterialize({ delay: 0.1, y: 12, blur: 6 });
+  const lens = useMaterialize({ delay: 0.2, y: 12, blur: 6 });
+  const footer = useMaterialize({ delay: 0.3, y: 8, blur: 4 });
 
   useEffect(() => {
     let live = true;
@@ -71,17 +54,26 @@ export default function Landing() {
     return () => { live = false; };
   }, []);
 
+  /** Go to the session, handing over where the lens and wordmark are so Session can grow from them. */
+  function enterSession() {
+    setPhase('ready');
+    const state: FlipOrigin | undefined = lensRef.current && wordmarkRef.current
+      ? { from: 'landing', at: Date.now(), lensRect: rectOf(lensRef.current), wordmarkRect: rectOf(wordmarkRef.current) }
+      : undefined;
+    navigate('/session', { state });
+  }
+
   /** Ask for the webcam (or reuse a standing grant), then hand over to the session page. */
   async function allow() {
     if (granted) {
-      navigate('/session');
+      enterSession();
       return;
     }
     setPhase('requesting');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       stream.getTracks().forEach((track) => track.stop());
-      navigate('/session');
+      enterSession();
     } catch (err) {
       const name = err instanceof DOMException ? err.name : '';
       setMessage(name === 'NotAllowedError' || name === 'SecurityError' ? MESSAGES.blocked : MESSAGES.missing);
@@ -91,45 +83,64 @@ export default function Landing() {
 
   return (
     <motion.main
-      initial={{ opacity: 1, filter: 'blur(0px)' }}
-      exit={reduced ? { opacity: 0, transition: { duration: 0.2 } } : { opacity: 0, filter: 'blur(12px)', transition: { duration: 0.35, ease: 'easeOut' } }}
-      className="relative flex min-h-dvh flex-col items-center overflow-hidden px-6"
+      initial={{ opacity: 1 }}
+      exit={reduced ? { opacity: 0, transition: { duration: 0.2 } } : { opacity: 1, transition: { duration: 0.25 } }}
+      className="relative flex min-h-dvh flex-col items-center gap-8 px-4 py-8 text-ink sm:px-8 lg:px-[72px]"
     >
-      <StippleArc className="pointer-events-none absolute left-1/2 top-0 w-[min(1300px,100vw)] -translate-x-1/2 text-ink sm:-top-[2%]" />
+      <motion.div aria-hidden exit={{ opacity: 0, transition: { duration: 0.25 } }} className="fixed inset-0 bg-canvas" />
 
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-center pb-20 pt-16 text-center">
-        <HeroWordmark />
-        <motion.p {...tagline} className="mt-5 max-w-[28ch] font-serif text-[1.25rem] leading-snug text-ink-2 sm:max-w-none sm:text-[1.5rem]">
-          A therapist&apos;s eye for every reach at home.
-        </motion.p>
+      <header className="relative">
+        <div ref={wordmarkRef}>
+          <Wordmark />
+        </div>
+      </header>
 
-        <motion.div {...actions} className="mt-10 flex flex-wrap items-center justify-center gap-3">
-          <Button onClick={allow} disabled={phase === 'requesting'} className="h-14 px-8 text-[1.05rem]">
+      <div className="relative flex w-full flex-1 flex-col-reverse items-center justify-center gap-10 lg:flex-row lg:gap-24">
+        <motion.div {...copy} exit={reduced ? undefined : LEAVE} className="flex w-full max-w-[480px] flex-col items-start gap-6">
+          <h2 className="display-lg sm:text-[3.5rem]">Your camera becomes a therapist’s eye.</h2>
+          <p className="text-[1.125rem] leading-[1.55] text-ink-2">
+            Personalized physical therapy for stroke patients. Please allow camera access to get started.
+          </p>
+
+          <Button onClick={allow} disabled={phase === 'requesting' || phase === 'ready'}>
             <CameraIcon />
-            {granted ? 'Continue to session' : 'Allow webcam access'}
+            Allow camera access
           </Button>
-          <Button variant="quiet" onClick={() => navigate('/doctor')} className="h-14 px-7">Therapist portal</Button>
-        </motion.div>
 
-        <div className="mt-6 min-h-24 max-w-[44ch]">
           <AnimatePresence>
             {phase === 'denied' && (
               <motion.div
                 role="status"
-                initial={{ opacity: 0, filter: 'blur(6px)', transform: 'translateY(8px)' }}
-                animate={{ opacity: 1, filter: 'blur(0px)', transform: 'translateY(0px)', transition: { duration: 0.45, ease: EASE_OUT } }}
+                initial={{ opacity: 0, transform: 'translateY(8px)' }}
+                animate={{ opacity: 1, transform: 'translateY(0px)', transition: { duration: 0.45, ease: EASE_OUT } }}
                 exit={{ opacity: 0, transition: { duration: 0.2 } }}
-                className="flex flex-col items-center gap-3"
+                className="flex max-w-[44ch] flex-col items-start gap-3"
               >
-                <p className="text-[1rem] leading-snug text-ink-2">{message}</p>
-                <Button variant="quiet" onClick={() => navigate('/session?demo=1')} className="h-10 px-5 text-[0.85rem]">Try with demo data</Button>
+                <p className="text-[0.95rem] leading-snug text-ink-2">{message}</p>
+                <Button variant="quiet" onClick={() => navigate('/session?demo=1')}>Try with demo data</Button>
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
+
+          <ol className="flex flex-col gap-2.5 pt-2 text-[0.95rem]">
+            {STEPS.map((step, i) => (
+              <li key={step} className="flex gap-3 text-ink-2">
+                <span className="eyebrow tabular !text-ok">{String(i + 1).padStart(2, '0')}</span>
+                {step}
+              </li>
+            ))}
+          </ol>
+        </motion.div>
+
+        <motion.div {...lens} className="flex w-full max-w-[460px] flex-col items-center gap-4">
+          <Lens ref={lensRef} />
+          <motion.p exit={reduced ? undefined : LEAVE} role="status" className="eyebrow tabular">
+            {CAPTIONS[phase]}
+          </motion.p>
+        </motion.div>
       </div>
 
-      <motion.footer {...footer} className="relative z-10 pb-8 text-center font-serif text-[0.9rem] text-ink-2">
+      <motion.footer {...footer} exit={reduced ? undefined : LEAVE} className="relative text-center text-ink-2">
         Made by Ehan Shah, Daniel Cao, Himmet Dhaliwal, Jack Scarlet
       </motion.footer>
     </motion.main>
