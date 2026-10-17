@@ -529,7 +529,7 @@ There are two natural lanes. Each person takes one lane first so you aren't edit
 - [ ] **C5 (P0)** `lib/rules.ts`: §6.2 rules, **generic over `ExerciseProfile`**, including `minFlagMs` and the lean modes. @himmet
 
 **Lane "App" (F1 first, then parallel):**
-- [ ] **F1 (P0)** App shell: Tailwind + shadcn/ui; pages Setup, Session, Results; routing; a page that runs on fake `PoseFrame`s.
+- [ ] **F1 (P0)** App shell: Tailwind + shadcn/ui; pages Setup, Session, Results; routing; a page that runs on fake `PoseFrame`s. @ehan
 - [ ] **F2 (P0)** Live body outline with green/amber/red per body part (§10); feed it fake flags until C5 lands.
 - [ ] **F3 (P0)** Setup screens per §9.1 (computed tape distances) and session steps per §9.2.
 - [ ] **F4 (P0)** Rep cards (rule verdict, model verdict or "model pending", numbers, grey "uncertain"), live lean and elbow charts, mode badge.
@@ -806,3 +806,19 @@ truereach/
   - **On a flag, play a short, warm spoken cue together with the buzz,** e.g. "Let's reset, it looks like you're leaning forward" or "Relax your shoulder down." Use a cooldown so it doesn't repeat every rep.
   - **No live API call per cue:** a round trip to Gemini arrives too late after the lean. Generate the 4–6 clips once (Gemini TTS or any TTS) as audio files in `web/public/cues/` and play them instantly. Fall back to browser `speechSynthesis` with the same text if the files are missing.
   - **Cue text:** one cue per `CompLabel`, written in a calm, encouraging tone (therapist input welcome). Clips are short, so they stay under the 50 MB rule.
+- [ACCEPTED by team, confirmed by Ehan] Ehan · **F9 Therapist portal (P1)**, owner Ehan. Tasks affected: F1 (adds the route), F2 (the outline can reuse F9's annotated skeleton), new F9. No change to `types.ts`, `config.ts`, or rule logic.
+  - **What:** a `/doctor` route that mirrors the patient's live session (video plus an annotated skeleton with lean and elbow angle arcs). A side panel shows the live per-frame math: `leanDeg`, `hikeRatio`, `elbowDeg`, `shoulderFlexDeg`, and `vis` against the `config.ts` thresholds, the `minFlagMs` timer, the near/far rule state, and a flag log.
+  - **Focus view:** clicking the video expands it to centre stage while the side cards move out of the way. Clicking a side card brings them back.
+  - **Transport:** a `BroadcastChannel` between the patient tab and the therapist tab on the same laptop. It's internal to `web/` and not a §16 contract; a LAN relay would be a separate proposal.
+  - **Without a patient tab:** the portal runs on fake `PoseFrame`s with a "Demo data" badge.
+  - **Why:** shows the therapist half of the home-rehab loop, and makes the AI's math visible to AI-track judges.
+  - **Arm model:** the patient and therapist views leave an empty slot for Daniel's 3D arm (F7). SAM 2 stays out (§1); object selection stays C3's single click.
+- [ACCEPTED by Ehan] Ehan · **F10 Gemini live coach + voice buzz control (P1)**, owner Ehan. Tasks affected: F6 (shares the Gemini key and server setup), S3 (reads the buzz-sensitivity setting), I3b, and §16 REST.
+  - **Coach panel (therapist portal):** every few seconds, and on each new flag, the browser sends a compact summary of recent features and flags to the server. Gemini returns one or two sentences on what is going right or wrong and the suggested next move, shown as typed-out text.
+  - **Mic button:** browser speech recognition turns the therapist's spoken instruction into text. Gemini turns it into a reply plus an optional buzz-sensitivity level (`low` / `medium` / `high`).
+  - **Buzz sensitivity** is a runtime setting S3 uses to pick the motor pattern and strength. It never changes the `config.ts` detection thresholds (D3/E4 own those).
+  - **Fallback:** without a key or the server, a template coach writes notes from the same numbers and the panel says "Template" instead of "Gemini" (matches the §18 fallback).
+  - **§16 REST additions:**
+    - `POST /coach` `{ context }` → `{ text, source: 'gemini' | 'template' }`
+    - `POST /coach/voice` `{ transcript, context }` → `{ reply, buzzSensitivity: 'low' | 'medium' | 'high' | null, source }`
+    - The key is `GEMINI_API_KEY` in `.env` and stays on the server.
