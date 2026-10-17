@@ -1,4 +1,5 @@
-// Live webcam with pose tracking. Pages get each PoseFrame via onPose; `debug` draws the tracked points.
+// Live webcam with pose tracking. Pages get each PoseFrame (and the video's width/height ratio) via onPose;
+// `debug` draws the tracked points.
 import { useEffect, useRef, useState } from 'react';
 import { FORWARD_REACH } from '../lib/config';
 import type { PoseFrame, Side } from '../lib/types';
@@ -6,7 +7,7 @@ import { PoseTracker, runPoseLoop, startCamera, stopCamera } from './pose';
 
 interface Props {
   side: Side;
-  onPose?: (frame: PoseFrame | null) => void;
+  onPose?: (frame: PoseFrame | null, aspect: number) => void;
   debug?: boolean;
 }
 
@@ -78,8 +79,9 @@ export default function CameraView({ side, onPose, debug = false }: Props) {
         if (cancelled) return release();
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
+        const aspect = video.videoWidth / video.videoHeight;
         stopLoop = runPoseLoop(video, tracker, () => sideRef.current, (frame) => {
-          onPoseRef.current?.(frame);
+          onPoseRef.current?.(frame, aspect);
           if (debugRef.current) drawDebug(canvas, frame);
         });
         setStatus('running');
