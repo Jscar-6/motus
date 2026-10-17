@@ -802,3 +802,7 @@ truereach/
   - **F6 (therapist report) moves from P2 to P1** and goes ahead of all improvements I1–I6. Build the template report first (§18 fallback); Gemini wording on top is the MLH stretch.
   - **Demo order (G3, §11):** show the near/far lean beat within the first 30 seconds, since it proves the system understands the exercise. Then the buzz.
   - **AI-track story:** the headline is "thresholds learned from clinician-labeled stroke data, tested on 9 real patients." The model is a measured comparison, not the headline. If the model doesn't beat the rules on check A, say so plainly.
+- [ACCEPTED by Jack] Jack · I3b voice cues upgraded, and made the first improvement after F6 (it reinforces eyes-free feedback). Tasks affected: I3b, S3.
+  - **On a flag, play a short, warm spoken cue together with the buzz,** e.g. "Let's reset, it looks like you're leaning forward" or "Relax your shoulder down." Use a cooldown so it doesn't repeat every rep.
+  - **No live API call per cue:** a round trip to Gemini arrives too late after the lean. Generate the 4–6 clips once (Gemini TTS or any TTS) as audio files in `web/public/cues/` and play them instantly. Fall back to browser `speechSynthesis` with the same text if the files are missing.
+  - **Cue text:** one cue per `CompLabel`, written in a calm, encouraging tone (therapist input welcome). Clips are short, so they stay under the 50 MB rule.
