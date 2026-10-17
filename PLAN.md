@@ -524,7 +524,7 @@ There are two natural lanes. Each person takes one lane first so you aren't edit
 **Lane "Camera" (series):**
 - [x] **C1 (P0)** `vision/pose.ts`: MediaPipe PoseLandmarker (lite), side view, left or right side → `PoseFrame`. @himmet
 - [x] **C2 (P0)** `lib/features.ts`: §6.1 features (camera-only mode) + rest-pose capture with stillness and visibility checks. @himmet
-- [ ] **C3 (P0)** `vision/target.ts`: Near/Far choice + one click → touch point; touch detection. @himmet
+- [x] **C3 (P0)** `vision/target.ts`: Near/Far choice + one click → touch point; touch detection. @himmet
 - [ ] **C4 (P0)** `lib/reps.ts`: rep start/end, **generic over `ExerciseProfile.goal`**. @himmet
 - [ ] **C5 (P0)** `lib/rules.ts`: §6.2 rules, **generic over `ExerciseProfile`**, including `minFlagMs` and the lean modes. @himmet
 
