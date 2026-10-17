@@ -522,11 +522,11 @@ flowchart LR
 There are two natural lanes. Each person takes one lane first so you aren't editing the same files.
 
 **Lane "Camera" (series):**
-- [ ] **C1 (P0)** `vision/pose.ts`: MediaPipe PoseLandmarker (lite), side view, left or right side → `PoseFrame`.
-- [ ] **C2 (P0)** `lib/features.ts`: §6.1 features (camera-only mode) + rest-pose capture with stillness and visibility checks.
-- [ ] **C3 (P0)** `vision/target.ts`: Near/Far choice + one click → touch point; touch detection.
-- [ ] **C4 (P0)** `lib/reps.ts`: rep start/end, **generic over `ExerciseProfile.goal`**.
-- [ ] **C5 (P0)** `lib/rules.ts`: §6.2 rules, **generic over `ExerciseProfile`**, including `minFlagMs` and the lean modes.
+- [x] **C1 (P0)** `vision/pose.ts`: MediaPipe PoseLandmarker (lite), side view, left or right side → `PoseFrame`. @himmet
+- [ ] **C2 (P0)** `lib/features.ts`: §6.1 features (camera-only mode) + rest-pose capture with stillness and visibility checks. @himmet
+- [ ] **C3 (P0)** `vision/target.ts`: Near/Far choice + one click → touch point; touch detection. @himmet
+- [ ] **C4 (P0)** `lib/reps.ts`: rep start/end, **generic over `ExerciseProfile.goal`**. @himmet
+- [ ] **C5 (P0)** `lib/rules.ts`: §6.2 rules, **generic over `ExerciseProfile`**, including `minFlagMs` and the lean modes. @himmet
 
 **Lane "App" (F1 first, then parallel):**
 - [ ] **F1 (P0)** App shell: Tailwind + shadcn/ui; pages Setup, Session, Results; routing; a page that runs on fake `PoseFrame`s.
