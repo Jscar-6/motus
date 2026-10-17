@@ -29,7 +29,6 @@ HIP_L, HIP_R, SPINE_SHOULDER = 12, 16, 20
 LABELS = {1: "none", 2: "shoulder_elevation", 3: "trunk_rotation", 4: "lean_forward"}
 
 
-
 @dataclasses.dataclass
 class Recording:
     """One TRSP task recording in body axes: x = subject's right, y = up, z = forward (units as stored, not metres)."""
