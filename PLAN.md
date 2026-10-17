@@ -526,7 +526,7 @@ There are two natural lanes. Each person takes one lane first so you aren't edit
 - [x] **C2 (P0)** `lib/features.ts`: §6.1 features (camera-only mode) + rest-pose capture with stillness and visibility checks. @himmet
 - [x] **C3 (P0)** `vision/target.ts`: Near/Far choice + one click → touch point; touch detection. @himmet
 - [x] **C4 (P0)** `lib/reps.ts`: rep start/end, **generic over `ExerciseProfile.goal`**. @himmet
-- [ ] **C5 (P0)** `lib/rules.ts`: §6.2 rules, **generic over `ExerciseProfile`**, including `minFlagMs` and the lean modes. @himmet
+- [x] **C5 (P0)** `lib/rules.ts`: §6.2 rules, **generic over `ExerciseProfile`**, including `minFlagMs` and the lean modes. @himmet
 
 **Lane "App" (F1 first, then parallel):**
 - [x] **F1 (P0)** App shell: Tailwind + shadcn/ui; pages Setup, Session, Results; routing; a page that runs on fake `PoseFrame`s. @ehan
@@ -830,3 +830,17 @@ truereach/
   - `config.ts`: `RPSS_WRIST_MARK_CM = 4`, `RPSS_NEAR_CM = 1`, `RPSS_FAR_CM = 30` replace the ratio placeholders; `nearRatio`/`farRatio` in `types.ts` become unused (needs this entry accepted).
   · tasks affected: D4, F3 (setup screens), `types.ts`.
 - [ACCEPTED by Ehan] Ehan · the D4 RPSS target placement proposal above: fixed cm from the table edge (wrist-crease mark 4 cm, near 1 cm, far 30 cm) replace `NEAR_RATIO`/`FAR_RATIO`, and §9.1 S3–S5 follow the RPSS setup. `nearRatio`/`farRatio` in `types.ts` and `armLengthCm`/`shoulderToEdgeCm` in `Calibration` become unused; removing them from `types.ts` is left to its owner (A2). · tasks affected: D4, F3, `types.ts`.
+- [ACCEPTED by team, confirmed by Daniel] Daniel · **F11 Recordings + physician portal (P1)**, owner Daniel. Tasks affected: F1 (routes, landing, patient page layout), F9 + F10 (portal components reused in the new physician pages; `/doctor` live mirror stays reachable), E3a (`/sessions` JSON file replaced by Supabase), §1.1 tech stack, §16 REST, §17 layout. No change to `types.ts`, `config.ts`, rules, or features.
+  - **Flow:** landing (Physician button top right) → patient page (Figma 1:6; Record/Stop replaces "Therapist view") and physician overview (Figma 21:2: patients ranked by % of time compensating, trend graph) → patient overview (Figma 5:13: recording playback with focus view, arm replay in sync, session numbers, past-recordings strip, coach and mic).
+  - **Recording:** webcam video (MediaRecorder, WebM) plus a timeline JSON of every live sample (pose, features, flags) and sleeve quaternion. The physician's arm and skeleton replay from the timeline in sync with the video, so the arm is not recorded as a second video.
+  - **Storage:** one hosted Supabase project (Postgres `patients` + `recordings`, Storage bucket `recordings`, Realtime). Each device runs the app on its own localhost (camera needs a secure context) and talks to the same project. A row is inserted when recording starts and set to `ready` after upload, so the physician sees it live. Keys go in `web/.env.local` (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`), never committed. Without keys, the camera-only session still runs and Record is disabled.
+  - **Demo scope:** one physician, no login (button only); permissive anon policies, so use test patients only. Sample patients in the seed SQL are flagged `is_sample` and badged "Sample" in the UI.
+  - **Why:** the home-rehab loop needs the patient and physician on different devices.
+  - **Patients:** one physician, several patients; each device records for one active patient (remembered per device, switchable on the landing page when there's more than one real patient).
+  - **New files (F11 lane, Daniel):** `supabase/` (schema, seed, setup), `web/src/db/`, `web/src/recording/`, `web/src/replay/`, `web/src/physician/`, `pages/Physician.tsx`, `pages/PatientOverview.tsx`. Small additive props in `doctor/VideoStage.tsx` (`content`, `enterFrom`) and `arm/ArmViewer.tsx` (`replay`).
+- [ACCEPTED by Jack] Jack · F11 Supabase recordings + physician portal (entry above), approved with these conditions:
+  - **The live session never depends on the network.** Camera, rules, sleeve and buzz run with Supabase down or keys missing (as the entry says); only Record and the physician pages need it. Hackathon Wi-Fi is the risk, so keep the Gate 1 backup video (§18) and a pre-seeded sample patient for the physician demo.
+  - **People in recordings:** anyone recorded at the demo (judges included) is told the video uploads to our hosted project. Anon policies are permissive, so delete non-sample recordings after the event and never upload real patients.
+  - **Server routes that read sessions** (F6 `/report`, F10 coach) must read from Supabase once `/sessions` moves there. Coordinate with Ehan.
+  - **Sleeve in the timeline:** record each `SensorFrame` as-is (`t` + three quaternions); replay goes through S2's `bodyRotationsSinceRest` (docs/sleeve.md) once the sleeve integration merges.
+  - **Process:** plan changes go through a PR touching only PLAN.md, not a direct push to `main` (CLAUDE.md rules 11 and 15).

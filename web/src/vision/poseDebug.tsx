@@ -1,11 +1,12 @@
 // Dev-only page (http://localhost:5173/pose-debug.html) to check C1 pose tracking, C2 features, C3 target touch,
-// and C4 reps without the app shell.
+// C4 reps, and C5 rules without the app shell.
 import { StrictMode, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { FORWARD_REACH } from '../lib/config';
 import { computeFeatures, RestPoseCapture, type RestCaptureStatus } from '../lib/features';
-import { RepTracker, type RepStats } from '../lib/reps';
-import type { FrameFeatures, PoseFrame, Side, Target } from '../lib/types';
+import { RepTracker } from '../lib/reps';
+import { createRuleTracker, finishRep, type RuleState } from '../lib/rules';
+import type { CompLabel, FrameFeatures, PoseFrame, RepResult, Side, Target } from '../lib/types';
 import CameraView from './CameraView';
 import { graspPoint, isTouching, targetFromClick } from './target';
 
@@ -31,8 +32,11 @@ function PoseDebug() {
   const [target, setTarget] = useState<Target | null>(null);
   const [touching, setTouching] = useState(false);
   const [inRep, setInRep] = useState(false);
-  const [reps, setReps] = useState<RepStats[]>([]);
+  const [reps, setReps] = useState<RepResult[]>([]);
+  const [rules, setRules] = useState<RuleState | null>(null);
   const repTracker = useRef(new RepTracker(FORWARD_REACH, 'camera'));
+  const ruleTracker = useRef(createRuleTracker(FORWARD_REACH));
+  const repFlags = useRef(new Set<CompLabel>());
   const times = useRef<number[]>([]);
   const capturing = useRef<RestPoseCapture | null>(null);
   const wantCapture = useRef(false);
@@ -57,15 +61,23 @@ function PoseDebug() {
       if (status.kind === 'done') {
         rest.current = status.restPose;
         repTracker.current.reset();
+        ruleTracker.current.reset();
         capturing.current = null;
       }
     }
     const feats = f && rest.current ? computeFeatures(f, rest.current, aspect) : null;
     setFeatures(feats);
     if (rest.current) {
+      const state = ruleTracker.current.update(feats, target?.near ?? true);
+      setRules(state);
       const ev = repTracker.current.update({ features: feats, touching: touch, near: target?.near });
       setInRep(ev.kind === 'started' || ev.kind === 'in_rep');
-      if (ev.kind === 'ended') setReps((r) => [ev.rep, ...r]);
+      if (ev.kind === 'started') repFlags.current.clear();
+      if (ev.kind === 'started' || ev.kind === 'in_rep' || ev.kind === 'ended') state.flags.forEach((l) => repFlags.current.add(l));
+      if (ev.kind === 'ended') {
+        const result = finishRep(FORWARD_REACH, ev.rep, repFlags.current);
+        setReps((r) => [result, ...r]);
+      }
     }
   };
 
@@ -74,6 +86,7 @@ function PoseDebug() {
     setSide(s);
     rest.current = null;
     repTracker.current.reset();
+    ruleTracker.current.reset();
     capturing.current = null;
     setCapture(null);
   };
@@ -150,19 +163,25 @@ function PoseDebug() {
             <tr><td>Lowest visibility</td><td>{n(features?.vis, 2)}</td></tr>
             <tr><td>Target ({target?.near === false ? 'far' : 'near'})</td><td>{!target ? '—' : touching ? 'TOUCH' : 'no'}</td></tr>
             <tr><td>Reps</td><td>{reps.length}{inRep ? ' · IN REP' : ''}</td></tr>
+            {rules?.checks.map((c) => (
+              <tr key={c.key} style={{ color: !c.enabled ? '#9ca3af' : c.flagged ? '#f87171' : c.level === 'warn' ? '#fbbf24' : '#4ade80' }}>
+                <td>Rule: {c.label}</td>
+                <td>{!c.enabled ? `off (${c.reason})` : c.flagged ? 'FLAG' : c.level}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
       <table style={{ fontVariantNumeric: 'tabular-nums', margin: '12px 0', borderSpacing: '12px 2px' }}>
         <thead>
-          <tr><th>Rep</th><th>Time (s)</th><th>Reached</th><th>Max lean °</th><th>Max hike</th><th>Min elbow °</th><th>Max flex °</th><th>Min vis</th></tr>
+          <tr><th>Rep</th><th>Time (s)</th><th>Reached</th><th>Max lean °</th><th>Max hike</th><th>Min elbow °</th><th>Max flex °</th><th>Min vis</th><th>Rule verdict</th></tr>
         </thead>
         <tbody>
           {reps.map((r) => (
             <tr key={r.repId}>
               <td>{r.repId}</td><td>{n((r.tEnd - r.tStart) / 1000)}</td><td>{r.reached ? 'yes' : 'NO'}</td>
               <td>{n(r.maxLeanDeg)}</td><td>{n(r.maxHikeRatio, 3)}</td><td>{n(r.minElbowDeg)}</td>
-              <td>{n(r.maxShoulderFlexDeg)}</td><td>{n(r.minVis, 2)}</td>
+              <td>{n(r.maxShoulderFlexDeg)}</td><td>{n(r.minVis, 2)}</td><td>{r.ruleFlags.join(', ')}</td>
             </tr>
           ))}
         </tbody>
