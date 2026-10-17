@@ -33,3 +33,6 @@ venv/
 .DS_Store
 .vscode/
 .idea/
+
+# MediaPipe WASM, copied from node_modules on npm install (36 MB)
+web/public/mediapipe-wasm/
