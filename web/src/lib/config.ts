@@ -14,9 +14,10 @@ export const PLACEHOLDER_MIN_FLAG_MS = 300;
 export const PLACEHOLDER_VIS_MIN = 0.5;
 // SOURCE: placeholder until E4 (hand-tuned during spot check); normalized image units
 export const PLACEHOLDER_TOUCH_RADIUS = 0.05;
-// SOURCE: placeholder until D4 (RPSS near-target placement, fraction of arm length)
+// SOURCE: placeholder. RPSS gives fixed cm, not arm-length ratios (docs/research.md, D4); replaced once the
+// PLAN.md §20 RPSS-placement proposal is accepted.
 export const PLACEHOLDER_NEAR_RATIO = 0.8;
-// SOURCE: placeholder until D4 (RPSS far-target placement, fraction of arm length)
+// SOURCE: placeholder, same reason as PLACEHOLDER_NEAR_RATIO (docs/research.md, D4).
 export const PLACEHOLDER_FAR_RATIO = 1.2;
 
 export const FORWARD_REACH: ExerciseProfile = {
