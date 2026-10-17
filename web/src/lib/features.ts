@@ -9,6 +9,9 @@ export const REST_CAPTURE_MS = 3000;
 // SOURCE: placeholder, hand-tuned on the pose check page until E4. Max drift of any landmark from its
 // average during the capture, as a fraction of trunk length (shoulder→hip).
 export const PLACEHOLDER_REST_STILL_RATIO = 0.06;
+// SOURCE: placeholder, hand-tuned during C2 spot check (single-frame jitter kept restarting the capture).
+// Bad frames are skipped; the capture restarts only if they last longer than this.
+export const PLACEHOLDER_REST_GRACE_MS = 300;
 
 const JOINTS = ['ear', 'shoulder', 'elbow', 'wrist', 'hip'] as const;
 type Joint = (typeof JOINTS)[number];
@@ -89,29 +92,42 @@ function averagePose(frames: PoseFrame[]): PoseFrame {
 /** Collects REST_CAPTURE_MS of still, visible frames and returns their average as the rest pose. */
 export class RestPoseCapture {
   private frames: PoseFrame[] = [];
+  private badSince: number | null = null;
 
   constructor(
     private readonly visMin: number,
     private readonly aspect: number,
   ) {}
 
-  /** Feed one frame; a rejection clears the window so the next frame starts a fresh attempt. */
+  /** Feed one frame; bad frames are skipped, and the window clears only once they outlast the grace period. */
   push(f: PoseFrame | null): RestCaptureStatus {
-    const reject = (reason: 'no_person' | 'hidden' | 'moving'): RestCaptureStatus => {
+    const now = f?.t ?? performance.now();
+    const bad = (reason: 'no_person' | 'hidden' | 'moving'): RestCaptureStatus => {
+      this.badSince ??= now;
+      if (this.frames.length > 0 && now - this.badSince <= PLACEHOLDER_REST_GRACE_MS) return this.holding();
       this.frames = [];
       return { kind: 'rejected', reason };
     };
-    if (!f) return reject('no_person');
-    if (minVisibility(f) < this.visMin) return reject('hidden');
+    if (!f) return bad('no_person');
+    if (minVisibility(f) < this.visMin) return bad('hidden');
+    if (this.frames.length > 0) {
+      const avg = averagePose(this.frames);
+      const trunk = dist(px(avg.shoulder, this.aspect), px(avg.hip, this.aspect));
+      const moved = JOINTS.some((j) => dist(px(f[j], this.aspect), px(avg[j], this.aspect)) > PLACEHOLDER_REST_STILL_RATIO * trunk);
+      if (moved) return bad('moving');
+    }
+    this.badSince = null;
     this.frames.push(f);
-    const avg = averagePose(this.frames);
-    const trunk = dist(px(avg.shoulder, this.aspect), px(avg.hip, this.aspect));
-    const moved = JOINTS.some((j) => dist(px(f[j], this.aspect), px(avg[j], this.aspect)) > PLACEHOLDER_REST_STILL_RATIO * trunk);
-    if (moved) return reject('moving');
     const elapsed = f.t - this.frames[0].t;
-    if (elapsed < REST_CAPTURE_MS) return { kind: 'holding', progress: elapsed / REST_CAPTURE_MS };
+    if (elapsed < REST_CAPTURE_MS) return this.holding();
     const restPose = averagePose(this.frames);
     this.frames = [];
     return { kind: 'done', restPose };
+  }
+
+  /** Progress through the hold, measured over the good frames collected so far. */
+  private holding(): RestCaptureStatus {
+    const elapsed = this.frames.length ? this.frames[this.frames.length - 1].t - this.frames[0].t : 0;
+    return { kind: 'holding', progress: elapsed / REST_CAPTURE_MS };
   }
 }
