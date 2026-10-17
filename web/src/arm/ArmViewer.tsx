@@ -96,8 +96,8 @@ function homeDistance(fovDeg: number, aspect: number): number {
   return (Math.max(needW / (2 * tanHalf * aspect), needH / (2 * tanHalf)) * FIT_MARGIN);
 }
 
-/** Fills its parent with the morphing dot arm, a mode toggle, and the sleeve status line. */
-export default function ArmViewer() {
+/** Fills its parent with the morphing dot arm, a mode toggle, and the sleeve status line; `replay` morphs straight to the arm and follows the pose in the live store (physician playback). */
+export default function ArmViewer({ replay = false }: { replay?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const controllerRef = useRef<Controller | null>(null);
   const [showArm, setShowArm] = useState(false);
@@ -135,7 +135,7 @@ export default function ArmViewer() {
 
     const rig = new ArmRig();
     const fusion = new PoseFusion();
-    const state = { target: 0, progress: 0, drive: false };
+    const state = { target: 0, progress: 0, drive: false, calibrated: false };
     let armPoints: ReturnType<typeof createArmPoints> | null = null;
     let disposed = false;
     let raf = 0;
@@ -189,6 +189,10 @@ export default function ArmViewer() {
       armPoints.uniforms.uTime.value = elapsed;
 
       const latest = useLive.getState().latest;
+      if (replay) {
+        if (!latest) state.calibrated = false;
+        else if (!state.calibrated) state.calibrated = fusion.calibrate();
+      }
       const pose = fusion.update(dt, latest?.pose ?? null, latest?.aspect ?? 1);
       if (state.drive && pose) rig.applyPose(pose);
       else rig.idle(elapsed, amplitude);
@@ -231,6 +235,10 @@ export default function ArmViewer() {
       built.uniforms.uSwirl.value = reduced ? 0 : 1;
       scene.add(built.points);
       armPoints = built;
+      if (replay) {
+        controller.morphTo('arm');
+        state.drive = true;
+      }
       resize();
       syncLoop();
     })();
@@ -249,7 +257,7 @@ export default function ArmViewer() {
       unregister();
       controllerRef.current = null;
     };
-  }, []);
+  }, [replay]);
 
   return (
     <div ref={containerRef} aria-label={`Arm model. ${STATUS_LABEL[status]}`} className="absolute inset-0">
