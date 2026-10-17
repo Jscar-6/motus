@@ -6,7 +6,7 @@ import { FORWARD_REACH } from '../lib/config';
 import { computeFeatures, RestPoseCapture, type RestCaptureStatus } from '../lib/features';
 import type { FrameFeatures, PoseFrame, Side, Target } from '../lib/types';
 import CameraView from './CameraView';
-import { handTip, isTouching, targetFromClick } from './target';
+import { graspPoint, isTouching, targetFromClick } from './target';
 
 const REJECT_TEXT = { no_person: 'no person in view', hidden: 'a body point is hidden', moving: 'you moved' };
 
@@ -73,7 +73,7 @@ function PoseDebug() {
 
   const n = (v: number | null | undefined, d = 1) => (v == null ? '—' : v.toFixed(d));
   const r = FORWARD_REACH.touchRadius!;
-  const tip = frame ? handTip(frame) : null;
+  const tip = frame ? graspPoint(frame) : null;
 
   return (
     <main style={{ fontFamily: 'system-ui', padding: 16, maxWidth: 960, margin: '0 auto' }}>
