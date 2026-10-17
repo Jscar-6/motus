@@ -838,3 +838,9 @@ truereach/
   - **Why:** the home-rehab loop needs the patient and physician on different devices.
   - **Patients:** one physician, several patients; each device records for one active patient (remembered per device, switchable on the landing page when there's more than one real patient).
   - **New files (F11 lane, Daniel):** `supabase/` (schema, seed, setup), `web/src/db/`, `web/src/recording/`, `web/src/replay/`, `web/src/physician/`, `pages/Physician.tsx`, `pages/PatientOverview.tsx`. Small additive props in `doctor/VideoStage.tsx` (`content`, `enterFrom`) and `arm/ArmViewer.tsx` (`replay`).
+- [ACCEPTED by Jack] Jack · F11 Supabase recordings + physician portal (entry above), approved with these conditions:
+  - **The live session never depends on the network.** Camera, rules, sleeve and buzz run with Supabase down or keys missing (as the entry says); only Record and the physician pages need it. Hackathon Wi-Fi is the risk, so keep the Gate 1 backup video (§18) and a pre-seeded sample patient for the physician demo.
+  - **People in recordings:** anyone recorded at the demo (judges included) is told the video uploads to our hosted project. Anon policies are permissive, so delete non-sample recordings after the event and never upload real patients.
+  - **Server routes that read sessions** (F6 `/report`, F10 coach) must read from Supabase once `/sessions` moves there. Coordinate with Ehan.
+  - **Sleeve in the timeline:** record each `SensorFrame` as-is (`t` + three quaternions); replay goes through S2's `bodyRotationsSinceRest` (docs/sleeve.md) once the sleeve integration merges.
+  - **Process:** plan changes go through a PR touching only PLAN.md, not a direct push to `main` (CLAUDE.md rules 11 and 15).
