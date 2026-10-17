@@ -1,9 +1,10 @@
-// Dev-only page (http://localhost:5173/pose-debug.html) to check C1 pose tracking, C2 features, and C3 target
-// touch without the app shell.
+// Dev-only page (http://localhost:5173/pose-debug.html) to check C1 pose tracking, C2 features, C3 target touch,
+// and C4 reps without the app shell.
 import { StrictMode, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { FORWARD_REACH } from '../lib/config';
 import { computeFeatures, RestPoseCapture, type RestCaptureStatus } from '../lib/features';
+import { RepTracker, type RepStats } from '../lib/reps';
 import type { FrameFeatures, PoseFrame, Side, Target } from '../lib/types';
 import CameraView from './CameraView';
 import { graspPoint, isTouching, targetFromClick } from './target';
@@ -29,6 +30,9 @@ function PoseDebug() {
   const [near, setNear] = useState(true);
   const [target, setTarget] = useState<Target | null>(null);
   const [touching, setTouching] = useState(false);
+  const [inRep, setInRep] = useState(false);
+  const [reps, setReps] = useState<RepStats[]>([]);
+  const repTracker = useRef(new RepTracker(FORWARD_REACH, 'camera'));
   const times = useRef<number[]>([]);
   const capturing = useRef<RestPoseCapture | null>(null);
   const wantCapture = useRef(false);
@@ -38,7 +42,8 @@ function PoseDebug() {
   const onPose = (f: PoseFrame | null, aspect: number) => {
     const now = performance.now();
     setAspect(aspect);
-    setTouching(!!f && !!target && isTouching(f, target, FORWARD_REACH.touchRadius!, FORWARD_REACH.visMin, aspect));
+    const touch = !!f && !!target && isTouching(f, target, FORWARD_REACH.touchRadius!, FORWARD_REACH.visMin, aspect);
+    setTouching(touch);
     times.current = [...times.current.filter((t) => now - t < 1000), now];
     setFps(times.current.length);
     setFrame(f);
@@ -51,16 +56,24 @@ function PoseDebug() {
       setCapture(status);
       if (status.kind === 'done') {
         rest.current = status.restPose;
+        repTracker.current.reset();
         capturing.current = null;
       }
     }
-    setFeatures(f && rest.current ? computeFeatures(f, rest.current, aspect) : null);
+    const feats = f && rest.current ? computeFeatures(f, rest.current, aspect) : null;
+    setFeatures(feats);
+    if (rest.current) {
+      const ev = repTracker.current.update({ features: feats, touching: touch, near: target?.near });
+      setInRep(ev.kind === 'started' || ev.kind === 'in_rep');
+      if (ev.kind === 'ended') setReps((r) => [ev.rep, ...r]);
+    }
   };
 
   /** Pick the tracked side; an old rest pose belongs to the other side, so drop it. */
   const pickSide = (s: Side) => {
     setSide(s);
     rest.current = null;
+    repTracker.current.reset();
     capturing.current = null;
     setCapture(null);
   };
@@ -136,9 +149,24 @@ function PoseDebug() {
             <tr><td>Shoulder flexion (°, 0 = arm down)</td><td>{n(features?.shoulderFlexDeg)}</td></tr>
             <tr><td>Lowest visibility</td><td>{n(features?.vis, 2)}</td></tr>
             <tr><td>Target ({target?.near === false ? 'far' : 'near'})</td><td>{!target ? '—' : touching ? 'TOUCH' : 'no'}</td></tr>
+            <tr><td>Reps</td><td>{reps.length}{inRep ? ' · IN REP' : ''}</td></tr>
           </tbody>
         </table>
       </div>
+      <table style={{ fontVariantNumeric: 'tabular-nums', margin: '12px 0', borderSpacing: '12px 2px' }}>
+        <thead>
+          <tr><th>Rep</th><th>Time (s)</th><th>Reached</th><th>Max lean °</th><th>Max hike</th><th>Min elbow °</th><th>Max flex °</th><th>Min vis</th></tr>
+        </thead>
+        <tbody>
+          {reps.map((r) => (
+            <tr key={r.repId}>
+              <td>{r.repId}</td><td>{n((r.tEnd - r.tStart) / 1000)}</td><td>{r.reached ? 'yes' : 'NO'}</td>
+              <td>{n(r.maxLeanDeg)}</td><td>{n(r.maxHikeRatio, 3)}</td><td>{n(r.minElbowDeg)}</td>
+              <td>{n(r.maxShoulderFlexDeg)}</td><td>{n(r.minVis, 2)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
       <pre>{frame ? JSON.stringify(frame, (_, v) => (typeof v === 'number' ? +v.toFixed(3) : v), 2) : '—'}</pre>
     </main>
   );
