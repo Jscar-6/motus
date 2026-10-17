@@ -501,7 +501,7 @@ flowchart LR
 
 ### Ehan
 **Phase 0, parallel (no repo needed):**
-- [ ] **D4 (P1)** RPSS → `docs/research.md`: near and far placement, exact wording of the near/far trunk rule, `NEAR_RATIO`/`FAR_RATIO`, citation.
+- [x] **D4 (P1)** RPSS → `docs/research.md`: near and far placement, exact wording of the near/far trunk rule, `NEAR_RATIO`/`FAR_RATIO`, citation.
 - [ ] **F0 (P1)** Figma mockups: Session screen (outline colors, target ring, rep cards, mode badge), Setup screens, Results page.
 
 **Phase 1, series (needs D1):**
