@@ -124,8 +124,8 @@ export default function Landing() {
 
           <ol className="flex flex-col gap-2.5 pt-2 text-[0.95rem]">
             {STEPS.map((step, i) => (
-              <li key={step} className="flex gap-3 text-ink-2">
-                <span className="eyebrow tabular !text-ok">{String(i + 1).padStart(2, '0')}</span>
+              <li key={step} className="flex items-baseline gap-3 text-ink-2">
+                <span className="eyebrow tabular w-5 shrink-0 !text-ok">{String(i + 1).padStart(2, '0')}</span>
                 {step}
               </li>
             ))}

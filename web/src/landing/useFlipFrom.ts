@@ -28,6 +28,8 @@ export function useFlipFrom(ref: RefObject<HTMLElement>, origin: FlipRect | unde
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el || !origin || reduced) return undefined;
+    const clear = () => { el.style.transform = ''; el.style.transformOrigin = ''; el.style.borderRadius = ''; };
+    clear();
     const to = el.getBoundingClientRect();
     const sx = origin.width / to.width;
     const sy = shape === 'panel' ? origin.height / to.height : sx;
@@ -41,8 +43,8 @@ export function useFlipFrom(ref: RefObject<HTMLElement>, origin: FlipRect | unde
     const controls = animate(el, target, {
       duration: DURATION,
       ease: EASE_OUT,
-      onComplete: () => { el.style.transform = ''; el.style.transformOrigin = ''; el.style.borderRadius = ''; },
+      onComplete: clear,
     });
-    return () => controls.cancel();
+    return () => { controls.cancel(); clear(); };
   }, [ref, origin, reduced, shape]);
 }
