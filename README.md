@@ -70,6 +70,12 @@ flowchart LR
 
 **Prerequisites:** Node 18+, Python 3.11+, Chrome (for Web Serial), and a free Kaggle account + API token for the dataset.
 
+**First time on the team:**
+1. Install the GitHub CLI from [cli.github.com](https://github.com/cli/cli#installation) (`brew install gh` on macOS). Don't use Ubuntu's apt version: it's too old, and `gh pr edit` fails on it.
+2. Run `gh auth login`.
+3. `git clone git@github.com:Jscar-6/true-reach.git`
+4. Start Claude Code in the repo with: *"Read PLAN.md and CLAUDE.md. I'm `<name>`, working on task `<ID>`."*
+
 ```bash
 # Web app → http://localhost:5173
 cd web && npm install && npm run dev
