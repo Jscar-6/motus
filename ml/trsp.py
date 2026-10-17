@@ -1,0 +1,176 @@
+"""TRSP loader (D1): per-recording Kinect joints (frames × 25 × xyz) + per-frame labels + task name.
+
+Usage: python ml/trsp.py   # runs the PLAN.md §5 step 2 sanity checks and writes them to docs/results.md
+"""
+
+import collections
+import dataclasses
+import pathlib
+import re
+
+import numpy as np
+import pandas as pd
+
+ML_DIR = pathlib.Path(__file__).resolve().parent
+DATA_DIR = ML_DIR / "data" / "trsp"
+RESULTS_MD = ML_DIR.parent / "docs" / "results.md"
+
+FPS = 30  # Kinect One skeleton rate reported for TRSP (Data 6(5):46, 2021); no timestamps in the files
+N_JOINTS = 25
+
+# Kinect v2 JointType indices used downstream (row order inside each 25-row frame block).
+SPINE_BASE, NECK, HEAD = 0, 2, 3
+SHOULDER_L, ELBOW_L, WRIST_L = 4, 5, 6
+SHOULDER_R, ELBOW_R, WRIST_R = 8, 9, 10
+HIP_L, HIP_R, SPINE_SHOULDER = 12, 16, 20
+
+# Label number → class. Confirmed with np.unique on the healthy scripted tasks (see sanity_report):
+# ShElev tasks use only {1, 2}, TrRot only {1, 3}, LnFwr only {1, 4}, plain tasks only {1}.
+LABELS = {1: "none", 2: "shoulder_elevation", 3: "trunk_rotation", 4: "lean_forward"}
+
+_MARK_START, _MARK_END = "<!-- D1:start -->", "<!-- D1:end -->"
+
+
+@dataclasses.dataclass
+class Recording:
+    """One TRSP task recording in body axes: x = subject's right, y = up, z = forward (units as stored, not metres)."""
+
+    subject: str
+    task: str
+    joints: np.ndarray  # (frames, 25, 3)
+    labels: np.ndarray  # (frames,) int, keys of LABELS
+
+    @property
+    def healthy(self) -> bool:
+        """True for H* subjects, False for P* stroke patients."""
+        return self.subject.startswith("H")
+
+
+def to_body_axes(raw: np.ndarray) -> np.ndarray:
+    """Map file columns (col0 = subject's right, col1 = up, col2 = backward) to x right, y up, z forward."""
+    return raw * np.array([1.0, 1.0, -1.0])
+
+
+def load_recording(task_dir: pathlib.Path) -> Recording:
+    """Load one <subject>/<task>/ folder; raises if rows don't split into 25-joint frames matching the labels."""
+    raw = pd.read_csv(task_dir / "Joint_Positions.csv", header=None).to_numpy(dtype=float)
+    labels = pd.read_csv(task_dir / "Labels.csv", header=None).to_numpy(dtype=int).ravel()
+    if raw.shape[1] != 3 or len(raw) % N_JOINTS:
+        raise ValueError(f"{task_dir}: {raw.shape} is not 3 columns × a multiple of {N_JOINTS} rows")
+    joints = to_body_axes(raw).reshape(-1, N_JOINTS, 3)
+    if len(joints) != len(labels):
+        raise ValueError(f"{task_dir}: {len(joints)} frames but {len(labels)} labels")
+    return Recording(task_dir.parent.name, task_dir.name, joints, labels)
+
+
+def load_all(root: pathlib.Path = DATA_DIR) -> list[Recording]:
+    """Load every recording under root (sorted by subject, then task)."""
+    if not root.is_dir():
+        raise FileNotFoundError(f"{root} missing; run python ml/download_trsp.py first")
+    return [load_recording(d) for d in sorted(root.glob("*/*")) if d.is_dir()]
+
+
+def task_family(task: str) -> str:
+    """Task name without its arm suffix and repeat number, e.g. Rch_Fwr_Bck_LnFwr_R_2 → Rch_Fwr_Bck_LnFwr."""
+    return re.sub(r"_(L|R)(_\d+)?$", "", task)
+
+
+def sanity_report(recs: list[Recording]) -> str:
+    """Run the PLAN.md §5 step 2 checks plus the axis checks and return them as Markdown."""
+    subjects = sorted({r.subject for r in recs})
+    healthy = [s for s in subjects if s.startswith("H")]
+    patients = [s for s in subjects if s.startswith("P")]
+    frames = sum(len(r.labels) for r in recs)
+
+    by_family = collections.defaultdict(collections.Counter)
+    for r in recs:
+        group = "healthy" if r.healthy else "patient"
+        values, counts = np.unique(r.labels, return_counts=True)
+        by_family[(group, task_family(r.task))].update(dict(zip(values.tolist(), counts.tolist())))
+
+    all_j = np.concatenate([r.joints for r in recs])
+    head_above = np.mean(all_j[:, HEAD, 1] > all_j[:, SPINE_BASE, 1])
+    right_of = np.mean(all_j[:, SHOULDER_R, 0] > all_j[:, SHOULDER_L, 0])
+
+    lean_rows = []
+    for r in recs:
+        if task_family(r.task) != "Rch_Fwr_Bck_LnFwr":
+            continue
+        trunk = r.joints[:, SPINE_SHOULDER] - r.joints[:, SPINE_BASE]
+        tilt = np.degrees(np.arctan2(trunk[:, 2], trunk[:, 1]))
+        lean_rows.append(np.median(tilt[r.labels == 4]) - np.median(tilt[r.labels == 1]))
+
+    fwr = [r for r in recs if task_family(r.task) == "Rch_Fwr_Bck"]
+    # Furthest wrist reach in front of SpineShoulder per recording (either arm, so no side logic here).
+    reach = [np.max(r.joints[:, [WRIST_L, WRIST_R], 2] - r.joints[:, [SPINE_SHOULDER], 2]) for r in fwr]
+    trunk_len = np.median(np.linalg.norm(all_j[:, SPINE_SHOULDER] - all_j[:, SPINE_BASE], axis=1))
+    fwr_patients = sorted({r.subject for r in fwr if not r.healthy})
+    no_fwr = [s for s in patients if s not in fwr_patients]
+
+    out = [
+        "## TRSP sanity checks (D1)",
+        "",
+        "Generated by `python ml/trsp.py` from `ml/data/trsp/` (Kaggle `derekdb/toronto-robot-stroke-posture-dataset`,"
+        " `data_new/` only; `robot/data_new/` is an identical copy and is skipped; `Labels - Copy.csv` files are skipped).",
+        "",
+        "| Check (PLAN.md §5 step 2) | Result |",
+        "|---|---|",
+        f"| Subject folders | {len(healthy)} healthy ({healthy[0]}–{healthy[-1]}), {len(patients)} patients ({patients[0]}–{patients[-1]}) |",
+        f"| Recordings / frames | {len(recs)} recordings, {frames} frames ({frames / FPS / 60:.1f} min at {FPS} fps) |",
+        f"| `Joint_Positions.csv` rows divide by 25 | all {len(recs)} pass |",
+        f"| Frames = `Labels.csv` rows | all {len(recs)} pass |",
+        f"| Label values (np.unique, all files) | {sorted({v for c in by_family.values() for v in c})} |",
+        "",
+        "### Label mapping",
+        "",
+        "Confirmed from the healthy scripted tasks, where each task can only contain clean frames and the one acted compensation:",
+        "",
+        "| Group | Task family | Frames per label value |",
+        "|---|---|---|",
+    ]
+    for (group, fam), counter in sorted(by_family.items()):
+        cells = ", ".join(f"{k}: {v}" for k, v in sorted(counter.items()))
+        out.append(f"| {group} | `{fam}` | {cells} |")
+    out += [
+        "",
+        "→ " + ", ".join(f"**{k} = {v}**" for k, v in LABELS.items()) + ".",
+        "",
+        "### Axis order",
+        "",
+        "Files store 3 columns per joint; the loader maps them to body axes x = subject's right, y = up, z = forward (col2 negated).",
+        "",
+        f"- col1 is vertical: Head above SpineBase in {head_above:.1%} of frames.",
+        f"- col0 points to the subject's right: ShoulderRight.x > ShoulderLeft.x in {right_of:.1%} of frames.",
+        f"- col2 points backward: the trunk tilts toward −col2 on label-4 frames in {sum(d > 0 for d in lean_rows)}/{len(lean_rows)}"
+        f" `LnFwr` recordings (median change {np.median(lean_rows):+.1f}° forward, range {min(lean_rows):+.1f}° to"
+        f" {max(lean_rows):+.1f}°), and a wrist reaches in front of SpineShoulder in {sum(d > 0 for d in reach)}/{len(reach)}"
+        f" `Rch_Fwr_Bck` recordings (smallest furthest reach {min(reach):+.2f}).",
+        f"- Units are not metres: median SpineBase→SpineShoulder length is {trunk_len:.2f} (a real trunk is about 0.5 m),"
+        " so D2 should use only angles and ratios.",
+        "",
+        "### Findings that affect later tasks",
+        "",
+        f"- **Forward-reach patients:** only {len(fwr_patients)} of {len(patients)} ({', '.join(fwr_patients)})."
+        f" {', '.join(no_fwr)} recorded only side-to-side tasks, so check A (§8) covers {len(fwr_patients)} patients, not 9.",
+        "- **Patient forward-reach labels** contain no trunk rotation (value 3), so rotation can't be tested on patients for this exercise.",
+        "- **No timestamps:** frame times assume the nominal 30 fps.",
+    ]
+    return "\n".join(out) + "\n"
+
+
+def write_results(section: str, path: pathlib.Path = RESULTS_MD) -> None:
+    """Replace the D1 block in docs/results.md (or create it), leaving other sections untouched."""
+    block = f"{_MARK_START}\n{section}{_MARK_END}\n"
+    text = path.read_text() if path.exists() else "# Results\n\n"
+    if _MARK_START in text:
+        head, rest = text.split(_MARK_START, 1)
+        text = head + block + rest.split(_MARK_END, 1)[1].lstrip("\n")
+    else:
+        text = text.rstrip("\n") + "\n\n" + block
+    path.write_text(text)
+
+
+if __name__ == "__main__":
+    report = sanity_report(load_all())
+    write_results(report)
+    print(report)

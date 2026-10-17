@@ -483,7 +483,7 @@ flowchart LR
   - `// SOURCE: placeholder until D3` comments
 
   Scaffold `web/` (Vite + React + TS), `server/` (FastAPI hello), and `ml/` (requirements.txt) so nobody fights over scaffolding later.
-- [ ] **D1 (P1)** `ml/download_trsp.py` + `ml/trsp.py` loader + the §5 step 2 sanity checks → `docs/results.md`. @ehan
+- [x] **D1 (P1)** `ml/download_trsp.py` + `ml/trsp.py` loader + the §5 step 2 sanity checks → `docs/results.md`. @ehan
 
 **Phase 1, series:**
 - [ ] **B1** Wire 3 MPU6050s per §12; the ESP32 prints raw data from all three.
