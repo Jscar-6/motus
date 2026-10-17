@@ -5,6 +5,16 @@
 A stroke patient does a prescribed seated forward reach next to a laptop. TrueReach watches through the built-in webcam. When the patient compensates instead of using the arm (leaning the trunk, hiking the shoulder, or twisting the trunk), the screen shows which body part is wrong and by how much. An optional sleeve (an ESP32 with 3 IMUs and 3 vibration motors) adds more precise trunk angles, trunk rotation, and a haptic buzz.
 
 Built at **SwampHacks**.
+
+## Why it matters
+
+- **The problem:** most stroke rehab exercises are done at home, without a therapist watching. When the arm is weak, patients compensate by leaning the trunk or hiking the shoulder. The reach looks done, but the arm didn't do the work, and repeating that at home reinforces the wrong movement.
+- **Who uses it, and when:**
+  1. The therapist prescribes the exercise in clinic.
+  2. The patient does it at home with a laptop (and the sleeve).
+  3. The therapist gets a report of how many reps were clean, and which compensation showed up in the rest.
+- **Why a sleeve, not just a webcam app:** a patient mid-reach can't watch a screen. A buzz on the arm or shoulder is feedback they feel without looking, like a therapist's hand on the shoulder. The camera sees; the sleeve tells the patient.
+- **It understands the exercise, not just the angles:** leaning toward a near target is flagged, but leaning toward a far target isn't, because the clinical scale (RPSS) expects it there.
 > **Status:** hackathon in progress. [`PLAN.md`](PLAN.md) is the source of truth for scope, tasks, and contracts.
 
 ---
