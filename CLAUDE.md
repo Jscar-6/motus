@@ -2,6 +2,7 @@
 
 ## 1. Before doing anything
 1. **Read `PLAN.md`.** It is the source of truth. If a request conflicts with it, say so before writing code.
+   - Read §20 (change log) last: newer entries override the sections above them. For example, D1 now belongs to Ehan, F6 is P1, and PRs are self-merged without approval.
 2. **Confirm who and what.** Ask the user for their name and task ID (PLAN.md §14–15) if they haven't said. Only touch the files that task needs (repo layout: §17).
 3. **Check dependencies.** Look up the task in PLAN.md §13.3 (dependency map) and §13.4 (wait points). Run `git fetch && git log origin/main --oneline` and check that every task this one depends on is **merged on `main`**. A ticked box in PLAN.md is not proof; the merged code is. Then tell the user one of:
    - "All dependencies are on `main`; building against the real code."
