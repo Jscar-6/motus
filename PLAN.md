@@ -791,3 +791,14 @@ truereach/
   - **Cite both papers in the README:** [1] Dolatabadi et al., *The Toronto Rehab Stroke Pose Dataset to Detect Compensation during Stroke Rehabilitation Therapy*, Pervasive Health 2017; [2] Zhi et al., *Automatic Detection of Compensation during Robotic Stroke Rehabilitation Therapy*, IEEE JTEHM 2017, doi:10.1109/JTEHM.2017.2780836.
 - [PROPOSED] Jack · §5 step 3 left-arm mirroring: decide the side from the task-name suffix (regex `_(L|R)(_\d+)?$`), not "name contains `L`". · why: `Rch_Fwr_Bck_LnFwr_R` contains an `L` but is a right-arm task, so the current rule would mirror it wrongly; the reference script has the same bug · tasks affected: D1, D2.
 - [ACCEPTED by Jack] Jack · lighter PR flow: no required approvals; authors (or their Claude Code) open and squash-merge their own PRs via `gh`. Kept: one PR per task, squash-only, no force pushes or history rewrites, so any task can be reverted in one click. Replaces the approval steps in A1 and §19.
+- [ACCEPTED by Jack] Jack · pitch emphasis, so judges don't read this as "another webcam form checker." Tasks affected: B3, F6, G1, G3, and the Phase 3 ordering.
+  - **Lead with the home-rehab loop:**
+    1. The therapist prescribes in clinic.
+    2. The patient exercises at home.
+    3. The therapist gets a compensation report.
+
+    README "Why it matters" carries this; keep the Devpost and the pitch consistent with it.
+  - **The sleeve is eyes-free feedback, not "more precise angles":** a patient mid-reach can't watch the screen; a buzz on the arm works like a therapist's hand on the shoulder. So **B3 (motors buzzing on command) is the hardware priority.** If B2's quaternions fight back, get `V,<motor>,<pattern>` working first; a sleeve that only buzzes still sells the story.
+  - **F6 (therapist report) moves from P2 to P1** and goes ahead of all improvements I1–I6. Build the template report first (§18 fallback); Gemini wording on top is the MLH stretch.
+  - **Demo order (G3, §11):** show the near/far lean beat within the first 30 seconds, since it proves the system understands the exercise. Then the buzz.
+  - **AI-track story:** the headline is "thresholds learned from clinician-labeled stroke data, tested on 9 real patients." The model is a measured comparison, not the headline. If the model doesn't beat the rules on check A, say so plainly.
