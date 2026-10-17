@@ -483,7 +483,7 @@ flowchart LR
   - `// SOURCE: placeholder until D3` comments
 
   Scaffold `web/` (Vite + React + TS), `server/` (FastAPI hello), and `ml/` (requirements.txt) so nobody fights over scaffolding later.
-- [ ] **D1 (P1)** `ml/download_trsp.py` + `ml/trsp.py` loader + the §5 step 2 sanity checks → `docs/results.md`.
+- [ ] **D1 (P1)** `ml/download_trsp.py` + `ml/trsp.py` loader + the §5 step 2 sanity checks → `docs/results.md`. @ehan
 
 **Phase 1, series:**
 - [ ] **B1** Wire 3 MPU6050s per §12; the ESP32 prints raw data from all three.
@@ -779,3 +779,17 @@ truereach/
   - `shoulderFlexDeg` added to features
   - `Prescription.exerciseId`
   - E3 split into stub (pool) and real model (Ehan)
+- [ACCEPTED by Jack] Jack · D1 handed to Ehan so Jack can start hardware (B1–B4). Ehan now owns D1 → D2 with no wait on Jack, and `ml/download_trsp.py` + `ml/trsp.py` move to Ehan's lane (§17). Jack keeps A1, A2, A3, B1–B4, S1–S3. Notes for D1, checked against the Kaggle file listing:
+  - **Source:** Kaggle `derekdb/toronto-robot-stroke-posture-dataset` (https://www.kaggle.com/datasets/derekdb/toronto-robot-stroke-posture-dataset), about 139 MB, "research use only", data files © original authors. Reference code (no data): https://github.com/zhiderek/TRSPD.
+  - **Auth:** create a Kaggle API token (Kaggle → Settings → API). Put it in `~/.kaggle/kaggle.json` or set `KAGGLE_USERNAME` / `KAGGLE_KEY` in `.env`. Never commit either.
+  - **Download:** `kagglehub.dataset_download("derekdb/toronto-robot-stroke-posture-dataset")` downloads to the kagglehub cache. `download_trsp.py` copies `data_new/` from there into `ml/data/trsp/` (gitignored).
+  - **Layout:** `data_new/<subject>/<task>/Joint_Positions.csv` + `Labels.csv`. Subjects are `H01`–`H10` and `P01`–`P09`.
+  - **Duplicate tree:** Kaggle also holds an identical copy under `robot/data_new/`. Use only `data_new/`, or every frame is counted twice.
+  - **Stray files:** ignore the `Labels - Copy.csv` files in `P05/Rch_Fwr_Bck_L` and `P08/Rch_Fwr_Bck_L_1`.
+  - **Joint_Positions.csv:** 3 columns of world coordinates, made of 25-row blocks stacked vertically, one block per frame. Rows follow the Kinect v2 `JointType` order (0 SpineBase, 2 Neck, 3 Head, 4/8 ShoulderLeft/Right, 5/9 Elbow, 6/10 Wrist, 12/16 HipLeft/Right, 20 SpineShoulder). Verify the axis order before computing angles; the reference script reorders the columns to x, z, y.
+  - **Forward-reach tasks (keep):** `Rch_Fwr_Bck_{L,R}`, with repeats `_1`/`_2`. Healthy subjects also have scripted versions `Rch_Fwr_Bck_{LnFwr,ShElev,TrRot}_{L,R}`. Patients have only the plain tasks.
+  - **Side-to-side tasks (drop):** `Rch_Sd2Sd_*`.
+  - **Labels:** take the number → class mapping from paper [1] (Dolatabadi et al., Pervasive Health 2017) and confirm it with `np.unique`, per §5. The Kaggle page doesn't state it.
+  - **Reference `load_data.py`:** don't reuse it. It's Python 2, and its healthy subject-ID list is built wrong (a string multiplied inside a list instead of a repeated list).
+  - **Cite both papers in the README:** [1] Dolatabadi et al., *The Toronto Rehab Stroke Pose Dataset to Detect Compensation during Stroke Rehabilitation Therapy*, Pervasive Health 2017; [2] Zhi et al., *Automatic Detection of Compensation during Robotic Stroke Rehabilitation Therapy*, IEEE JTEHM 2017, doi:10.1109/JTEHM.2017.2780836.
+- [PROPOSED] Jack · §5 step 3 left-arm mirroring: decide the side from the task-name suffix (regex `_(L|R)(_\d+)?$`), not "name contains `L`". · why: `Rch_Fwr_Bck_LnFwr_R` contains an `L` but is a right-arm task, so the current rule would mirror it wrongly; the reference script has the same bug · tasks affected: D1, D2.
