@@ -42,6 +42,7 @@ export default function SessionDataCard({ recording }: { recording: RecordingRow
   const counts = (Object.entries(recording?.flag_counts ?? {}) as [CompLabel, number][]).filter(([l, n]) => l !== 'clean' && n > 0).sort((a, b) => b[1] - a[1]);
   const { maxLeanDeg, minElbowDeg } = recording?.peaks ?? {};
   const peaks = [maxLeanDeg !== undefined && `Max lean ${Math.round(maxLeanDeg)}°`, minElbowDeg !== undefined && `Min elbow ${Math.round(minElbowDeg)}°`].filter(Boolean).join(' · ');
+  const analysed = recording?.pct_compensating != null;
   const value = ready ? pct(recording.pct_compensating) : '—';
 
   return (
@@ -54,7 +55,8 @@ export default function SessionDataCard({ recording }: { recording: RecordingRow
         <Swap id={value} className={`display-lg absolute inset-y-0 left-0 ${TONE[levelOf(ready ? recording.pct_compensating : null)]}`}>{value}</Swap>
       </div>
       <ul className="flex min-h-0 flex-wrap content-start gap-1.5" aria-label="Flags">
-        {ready && counts.length === 0 && <li className="font-serif text-[0.9rem] text-ink-2">No flags</li>}
+        {ready && !analysed && <li className="font-serif text-[0.9rem] text-ink-2">No analysis yet</li>}
+        {ready && analysed && counts.length === 0 && <li className="font-serif text-[0.9rem] text-ink-2">No flags</li>}
         {counts.slice(0, MAX_FLAGS).map(([label, n]) => (
           <li key={label} className="tabular inline-flex h-6 items-center rounded-full bg-ink/[0.06] px-2.5 font-display text-[0.65rem] tracking-[0.06em] text-ink-2 uppercase">
             {LABELS[label]} ×{n}

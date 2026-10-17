@@ -1,9 +1,8 @@
-// The recording playback panel: video with the replayed skeleton on top, state messages, and glass controls with flag ticks on the scrubber.
+// The recording playback panel: video, state messages, and glass controls with flag ticks on the scrubber.
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 import { publicUrl } from '../../db/supabase';
 import type { RecordingRow, RecordingTimeline } from '../../db/types';
-import PoseCanvas from '../../patient/PoseCanvas';
 import { duration, stamp } from '../format';
 
 const CHIP = 'inline-flex h-7 items-center rounded-full bg-black/35 px-3 font-display text-[0.7rem] tracking-[0.08em] text-white/90 uppercase backdrop-blur-md';
@@ -72,26 +71,23 @@ function Layer({ recording, patientName, configured, onVideo }: SurfaceProps) {
   );
 }
 
-/** Panel content under the focus button: the recording layer (cross-faded between recordings) and the replayed skeleton. */
+/** Panel content under the focus button: the recording layer, cross-faded between recordings. */
 export function PlayerSurface(props: SurfaceProps) {
   const reduced = useReducedMotion();
   const key = `${props.recording?.id ?? 'none'}:${props.recording?.status ?? ''}`;
   return (
-    <>
-      <AnimatePresence initial={false}>
-        <motion.div
-          key={key}
-          className="absolute inset-0"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: reduced ? 0.15 : 0.2, ease: 'easeOut' }}
-        >
-          <Layer {...props} />
-        </motion.div>
-      </AnimatePresence>
-      <PoseCanvas fit="cover" className="pointer-events-none absolute inset-0 size-full" />
-    </>
+    <AnimatePresence initial={false}>
+      <motion.div
+        key={key}
+        className="absolute inset-0"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: reduced ? 0.15 : 0.2, ease: 'easeOut' }}
+      >
+        <Layer {...props} />
+      </motion.div>
+  </AnimatePresence>
   );
 }
 

@@ -1,6 +1,6 @@
 # replay
 
-Plays a saved recording back through the same live store the patient session writes to (F11), so the physician's arm viewer, pose canvas, alert tint and coach context need no replay-specific code.
+Plays a saved recording back through the same live store the patient session writes to (F11), so the physician's arm viewer, alert tint and coach context need no replay-specific code.
 
 | File | Role |
 | --- | --- |

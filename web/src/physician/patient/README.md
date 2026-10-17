@@ -5,7 +5,7 @@ Components of the physician's patient overview (`/physician/:patientId`, F11, Fi
 | File | Role |
 | --- | --- |
 | `OverviewLayout.tsx` | Desktop grid with slide-out cards and the focus view (reuses `doctor/VideoStage`), or a stacked layout below 1024 px |
-| `RecordingPlayer.tsx` | `PlayerSurface` (video, state messages, pose canvas) and `PlayerOverlay` (date chip, glass controls, flag ticks) |
+| `RecordingPlayer.tsx` | `PlayerSurface` (video, state messages) and `PlayerOverlay` (date chip, glass controls, flag ticks) |
 | `PastExercisesCard.tsx` | Bottom-middle card: thumbnail strip, or the voice transcript while dictating |
 | `RecordingStrip.tsx`, `HScrollbar.tsx` | Newest-first tiles and a custom scrollbar shown only when they overflow |
 | `TranscriptPanel.tsx` | Live transcript, editable box, Gemini reply typed out, check marks |
@@ -16,4 +16,4 @@ Components of the physician's patient overview (`/physician/:patientId`, F11, Fi
 | `useRecordingNote.ts` | One cached coach note per recording, built from its stored peaks and flag counts |
 | `useTypewriter.ts` | Character-by-character reveal (instant under reduced motion) |
 
-The arm card uses `ArmViewer replay`, which follows the pose in the live store. Playback writes the recording's samples to that store, so the arm, skeleton, alert tint and coach context stay in sync with the video.
+The arm card uses `ArmViewer replay`, which follows the pose in the live store. Playback writes the recording's samples to that store, so the arm, alert tint and coach context stay in sync with the video.

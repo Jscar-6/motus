@@ -10,8 +10,8 @@ import { rectOf, type FlipOrigin } from '../landing/useFlipFrom';
 import { EASE_OUT, useMaterialize } from '../patient/motion';
 
 const MESSAGES = {
-  blocked: 'Camera access was blocked. You can allow it from the address bar, or look around with demo data.',
-  missing: "We couldn't find a camera on this device. You can still look around with demo data.",
+  blocked: 'Camera access was blocked. You can allow it from the address bar, or try again.',
+  missing: "We couldn't find a camera on this device. Connect one and try again.",
 } as const;
 const STEPS = [
   'Laptop to your affected side, webcam at shoulder height',
@@ -134,7 +134,6 @@ export default function Landing() {
                 className="flex max-w-[44ch] flex-col items-start gap-3"
               >
                 <p className="text-[0.95rem] leading-snug text-ink-2">{message}</p>
-                <Button variant="quiet" onClick={() => navigate('/session?demo=1')}>Try with demo data</Button>
               </motion.div>
             )}
           </AnimatePresence>

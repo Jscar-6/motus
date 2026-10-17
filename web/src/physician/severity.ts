@@ -13,7 +13,7 @@ export type SeverityLevel = 'none' | 'ok' | 'watch' | 'attention';
 export interface Severity {
   level: SeverityLevel;
   pct: number | null;           // mean pct_compensating over the recent recordings, 0–1
-  recordings: number;           // finished recordings in total
+  recordings: number;           // finished recordings in total, with or without analysis
   lastAt: string | null;        // started_at of the newest recording of any status
   recordingNow: boolean;        // a recording with status 'recording' or 'uploading' exists
 }
@@ -29,8 +29,8 @@ export function levelOf(pct: number | null): SeverityLevel {
 /** Severity of one patient from their recordings (any order). */
 export function severityOf(recordings: RecordingRow[]): Severity {
   const sorted = recordings.slice().sort((a, b) => b.started_at.localeCompare(a.started_at));
-  const ready = sorted.filter((r) => r.status === 'ready' && r.pct_compensating !== null);
-  const recent = ready.slice(0, RECENT_COUNT);
+  const ready = sorted.filter((r) => r.status === 'ready');
+  const recent = ready.filter((r) => r.pct_compensating !== null).slice(0, RECENT_COUNT);
   const pct = recent.length ? recent.reduce((sum, r) => sum + (r.pct_compensating ?? 0), 0) / recent.length : null;
   return {
     level: levelOf(pct),
