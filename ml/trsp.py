@@ -28,8 +28,6 @@ HIP_L, HIP_R, SPINE_SHOULDER = 12, 16, 20
 # ShElev tasks use only {1, 2}, TrRot only {1, 3}, LnFwr only {1, 4}, plain tasks only {1}.
 LABELS = {1: "none", 2: "shoulder_elevation", 3: "trunk_rotation", 4: "lean_forward"}
 
-_MARK_START, _MARK_END = "<!-- D1:start -->", "<!-- D1:end -->"
-
 
 @dataclasses.dataclass
 class Recording:
@@ -158,13 +156,14 @@ def sanity_report(recs: list[Recording]) -> str:
     return "\n".join(out) + "\n"
 
 
-def write_results(section: str, path: pathlib.Path = RESULTS_MD) -> None:
-    """Replace the D1 block in docs/results.md (or create it), leaving other sections untouched."""
-    block = f"{_MARK_START}\n{section}{_MARK_END}\n"
+def write_results(section: str, path: pathlib.Path = RESULTS_MD, section_id: str = "D1") -> None:
+    """Replace the <section_id> block in docs/results.md (or append it), leaving other sections untouched."""
+    start, end = f"<!-- {section_id}:start -->", f"<!-- {section_id}:end -->"
+    block = f"{start}\n{section}{end}\n"
     text = path.read_text() if path.exists() else "# Results\n\n"
-    if _MARK_START in text:
-        head, rest = text.split(_MARK_START, 1)
-        text = head + block + rest.split(_MARK_END, 1)[1].lstrip("\n")
+    if start in text:
+        head, rest = text.split(start, 1)
+        text = head + block + rest.split(end, 1)[1].lstrip("\n")
     else:
         text = text.rstrip("\n") + "\n\n" + block
     path.write_text(text)
