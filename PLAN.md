@@ -505,7 +505,7 @@ flowchart LR
 - [ ] **F0 (P1)** Figma mockups: Session screen (outline colors, target ring, rep cards, mode badge), Setup screens, Results page.
 
 **Phase 1, series (needs D1):**
-- [ ] **D2 (P1)** `ml/features.py`: §6.1 features on TRSP forward-reach frames (§5 steps 3–4).
+- [x] **D2 (P1)** `ml/features.py`: §6.1 features on TRSP forward-reach frames (§5 steps 3–4).
 - [ ] **D3 (P1)** Thresholds from healthy frames → `config.ts` with source comments + plots in `docs/`.
 - [ ] **E1 (P1)** `ml/train.py`: both model versions (§7).
 - [ ] **E2 (P1)** `ml/eval.py`: checks A and B for rules and model → `docs/results.md` + `docs/results.json`.
