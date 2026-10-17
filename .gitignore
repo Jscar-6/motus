@@ -1,0 +1,35 @@
+# Secrets (CLAUDE.md rule 16)
+.env
+kaggle.json
+
+# TRSP is research-use only: commit the download script, never the data
+ml/data/
+
+# Raw video
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+
+# Model files over 50 MB can't be matched by size here; keep ml/models/ small or list big files below
+
+# Node / web
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# PlatformIO
+.pio/
+
+# OS / editors
+.DS_Store
+.vscode/
+.idea/
