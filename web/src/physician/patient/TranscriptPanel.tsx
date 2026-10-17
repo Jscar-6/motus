@@ -103,7 +103,7 @@ export default function TranscriptPanel({ voice }: { voice: VoiceNote }) {
             aria-label="Instruction text"
             placeholder="Type an instruction, for example: make the buzz gentler"
             rows={3}
-            className="min-h-0 w-full flex-1 resize-none rounded-[var(--radius-inner)] bg-white/70 p-3 font-serif text-[1.125rem] leading-snug text-ink outline-none placeholder:text-ink-3 focus-visible:ring-2 focus-visible:ring-ink/30"
+            className="min-h-0 w-full flex-1 resize-none rounded-[var(--radius-inner)] bg-white/70 p-3 font-serif text-[1.125rem] leading-snug text-ink shadow-[inset_0_0_0_1px_var(--color-hairline)] outline-none placeholder:text-ink-3 focus-visible:shadow-[inset_0_0_0_1.5px_rgb(43_26_18/0.3)]"
             style={{ opacity: phase === 'thinking' ? 0.6 : 1, transition: 'opacity 200ms ease-out' }}
           />
         )}

@@ -16,6 +16,8 @@ const COLLAPSE_AT = 24;   // scrollTop (px) past which the graph slides out
 const EXPAND_AT = 4;      // scrollTop (px) below which it slides back in; the gap stops flicker
 const MIN_OVERFLOW = 32;  // list must still scroll by this much after the graph is gone, or collapsing would bounce back
 const MAX_WASH = 0.12;    // strongest red tint of the canvas, when everyone needs attention
+const COLUMN = 'mx-auto w-full max-w-[64rem]';  // one content column shared by the graph and the patient rows so their edges line up
+const GUTTER = { scrollbarWidth: 'thin', scrollbarGutter: 'stable both-edges' } as const;  // reserve the scrollbar's space on both sides so the graph and list columns stay equal
 
 /** The /physician page. */
 export default function Physician() {
@@ -62,7 +64,7 @@ export default function Physician() {
   const slide = reduced ? '' : 'calc(100% + 2rem)';
   const body = !hasDatabase() ? <SetupCard />
     : error ? <ErrorCard message={error} />
-    : loading ? <div className="mx-auto w-full max-w-3xl"><SkeletonList /></div>
+    : loading ? <div className={COLUMN}><SkeletonList /></div>
     : !entries.length ? <EmptyCard />
     : null;
 
@@ -85,14 +87,15 @@ export default function Physician() {
             className="grid shrink-0"
             style={{ gridTemplateRows: collapsed ? '0fr' : '1fr', transition: `grid-template-rows ${reduced ? 200 : 450}ms var(--ease-drawer)` }}
           >
-            <div className="-mx-4 -mt-2 min-h-0 overflow-hidden px-4 pb-5 pt-2">
-              <motion.div {...card}>
+            <div className="pointer-events-none -mx-4 -mb-8 -mt-2 min-h-0 overflow-hidden px-4 pb-12 pt-2 lg:-mx-8 lg:px-8" style={GUTTER}>
+              <motion.div {...card} className={`${COLUMN} pointer-events-auto`}>
               <section
                 ref={graphRef}
                 aria-label="Trend of time compensating"
                 aria-hidden={collapsed}
                 className="material-solid flex h-[clamp(13rem,32dvh,19rem)] flex-col gap-2 p-5"
                 style={{
+                  boxShadow: 'var(--shadow-card), inset 0 1px 0 rgb(255 255 255 / 1)',
                   transform: collapsed ? `translateX(${slide})` : 'translateX(0)',
                   opacity: collapsed ? 0 : 1,
                   visibility: collapsed ? 'hidden' : 'visible',
@@ -112,8 +115,8 @@ export default function Physician() {
             </div>
           </div>
 
-          <motion.div layoutScroll onScroll={onScroll} className="-mx-1 min-h-0 flex-1 overscroll-contain px-1 pt-1 lg:overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: 'var(--color-ink-3) transparent' }}>
-            <div className="mx-auto w-full max-w-3xl">
+          <motion.div layoutScroll onScroll={onScroll} className="-mx-4 min-h-0 flex-1 overscroll-contain px-4 pt-1 lg:overflow-y-auto" style={{ ...GUTTER, scrollbarColor: 'var(--color-ink-3) transparent' }}>
+            <div className={COLUMN}>
               <PatientList entries={entries} onOpen={open} />
             </div>
           </motion.div>
