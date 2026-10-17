@@ -529,7 +529,7 @@ There are two natural lanes. Each person takes one lane first so you aren't edit
 - [ ] **C5 (P0)** `lib/rules.ts`: §6.2 rules, **generic over `ExerciseProfile`**, including `minFlagMs` and the lean modes. @himmet
 
 **Lane "App" (F1 first, then parallel):**
-- [ ] **F1 (P0)** App shell: Tailwind + shadcn/ui; pages Setup, Session, Results; routing; a page that runs on fake `PoseFrame`s. @ehan
+- [x] **F1 (P0)** App shell: Tailwind + shadcn/ui; pages Setup, Session, Results; routing; a page that runs on fake `PoseFrame`s. @ehan
 - [ ] **F2 (P0)** Live body outline with green/amber/red per body part (§10); feed it fake flags until C5 lands.
 - [ ] **F3 (P0)** Setup screens per §9.1 (computed tape distances) and session steps per §9.2.
 - [ ] **F4 (P0)** Rep cards (rule verdict, model verdict or "model pending", numbers, grey "uncertain"), live lean and elbow charts, mode badge.
