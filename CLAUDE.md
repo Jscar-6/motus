@@ -41,6 +41,8 @@
     - Ask before any command that discards uncommitted work.
 14. Small commits. Message format: `<taskID>: <what>`, e.g. `C2: rest-pose capture`.
 15. Fill in `.github/pull_request_template.md` completely, including dependencies and stubs. Say exactly what you tested.
+    - No teammate approval is needed. Once it builds or runs, open and merge the PR yourself: `gh pr create --fill` then `gh pr merge --squash --delete-branch`.
+    - Every task lands as one squashed PR, so it can be undone with one Revert. That's why you still never commit straight to `main`.
 16. **Never commit** `.env`, API keys or Kaggle tokens, anything in `ml/data/trsp/`, model files over 50 MB, or raw video.
 
 ## 5. Correctness

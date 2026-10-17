@@ -715,19 +715,16 @@ truereach/
 ## 19. GitHub + Claude workflow
 
 ### One-time setup (task A1)
-1. Add a branch protection rule on `main` in the repo settings:
-   - require a pull request
-   - require 1 approval
-   - block force pushes
-   - block deletion
+1. Add a branch protection rule on `main` that **blocks force pushes** (deletion is blocked by default). No required approvals: we move fast and revert instead.
 2. Allow **squash merging only.** Every PR becomes one commit on `main`, so any PR can be undone with one revert.
+3. Each teammate installs the GitHub CLI and runs `gh auth login` once, so Claude Code can open and merge PRs.
 
 ### Every task
 1. **Check dependencies first.** In §13.3–13.4, is everything your task needs ticked **and merged on `main`**? If not, build against the contract with fakes or stubs (see `CLAUDE.md`), or pick another unblocked task.
 2. Claim the task (`@name`), then `git checkout main && git pull`, then `git checkout -b <name>/<taskID>-<short>`.
 3. Start Claude with: *"Read PLAN.md and CLAUDE.md. I'm <name>, working on task <ID>."* Claude Code reads `CLAUDE.md` automatically; in the claude.ai app, attach both files.
 4. Commit small. Before opening a PR, merge the latest `main` into your branch (`git fetch && git merge origin/main`) and make sure it still builds.
-5. Open the PR with the template. A teammate approves after checking two things: does it match the plan, and does it run.
+5. Open the PR with the template and squash-merge it yourself (Claude Code: `gh pr create --fill` then `gh pr merge --squash --delete-branch`). No approval needed; before merging, check two things: does it match the plan, and does it run.
 6. After merging, run the demo on `main`. If it works, tag it: `git tag good-<short-name> && git push --tags`.
 7. Post in team chat: "**<taskID> merged**". Anyone waiting on it (§13.4) pulls `main` and swaps their stub for the real thing.
 
@@ -793,3 +790,4 @@ truereach/
   - **Reference `load_data.py`:** don't reuse it. It's Python 2, and its healthy subject-ID list is built wrong (a string multiplied inside a list instead of a repeated list).
   - **Cite both papers in the README:** [1] Dolatabadi et al., *The Toronto Rehab Stroke Pose Dataset to Detect Compensation during Stroke Rehabilitation Therapy*, Pervasive Health 2017; [2] Zhi et al., *Automatic Detection of Compensation during Robotic Stroke Rehabilitation Therapy*, IEEE JTEHM 2017, doi:10.1109/JTEHM.2017.2780836.
 - [PROPOSED] Jack · §5 step 3 left-arm mirroring: decide the side from the task-name suffix (regex `_(L|R)(_\d+)?$`), not "name contains `L`". · why: `Rch_Fwr_Bck_LnFwr_R` contains an `L` but is a right-arm task, so the current rule would mirror it wrongly; the reference script has the same bug · tasks affected: D1, D2.
+- [ACCEPTED by Jack] Jack · lighter PR flow: no required approvals; authors (or their Claude Code) open and squash-merge their own PRs via `gh`. Kept: one PR per task, squash-only, no force pushes or history rewrites, so any task can be reverted in one click. Replaces the approval steps in A1 and §19.
