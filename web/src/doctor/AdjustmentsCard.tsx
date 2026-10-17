@@ -2,6 +2,7 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { useLive, useThrottledSample } from '../live/store';
 import type { LiveSample } from '../live/types';
+import ArmViewer from '../arm/ArmViewer';
 import ArmSlot from '../ui/ArmSlot';
 
 type Tone = 'idle' | 'ok' | 'warn' | 'bad';
@@ -76,7 +77,7 @@ export default function AdjustmentsCard() {
           </motion.div>
         </AnimatePresence>
       </div>
-      <ArmSlot className="mt-4 min-h-24 flex-1 bg-paper" />
+      <ArmSlot className="mt-4 min-h-24 flex-1 bg-paper"><ArmViewer /></ArmSlot>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import InstructionCard from '../patient/InstructionCard';
 import NearFarControl from '../patient/NearFarControl';
 import PoseCanvas from '../patient/PoseCanvas';
 import { EASE_OUT, useMaterialize } from '../patient/motion';
+import ArmViewer from '../arm/ArmViewer';
 import ArmSlot from '../ui/ArmSlot';
 import Badge from '../ui/Badge';
 import Button from '../ui/Button';
@@ -175,7 +176,7 @@ function SessionView({ demo }: { demo: boolean }) {
       </div>
 
       <motion.div {...arm} className="material relative self-end p-2.5 lg:absolute lg:bottom-6 lg:left-6" style={{ width: 'var(--col)' }}>
-        <ArmSlot className="aspect-square w-full" />
+        <ArmSlot className="aspect-square w-full"><ArmViewer /></ArmSlot>
       </motion.div>
     </motion.main>
   );
