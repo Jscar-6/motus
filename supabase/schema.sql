@@ -61,5 +61,8 @@ on conflict (id) do update set public = true, file_size_limit = 52428800;
 
 drop policy if exists "demo anon read recordings" on storage.objects;
 drop policy if exists "demo anon write recordings" on storage.objects;
+drop policy if exists "demo anon update recordings" on storage.objects;
 create policy "demo anon read recordings"  on storage.objects for select to anon, authenticated using (bucket_id = 'recordings');
 create policy "demo anon write recordings" on storage.objects for insert to anon, authenticated with check (bucket_id = 'recordings');
+-- Update lets a retried upload overwrite a partial file (upsert).
+create policy "demo anon update recordings" on storage.objects for update to anon, authenticated using (bucket_id = 'recordings') with check (bucket_id = 'recordings');

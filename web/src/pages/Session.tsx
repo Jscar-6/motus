@@ -1,5 +1,5 @@
-// Patient view (Figma 1:6): a big video panel sliding in from the right, a white instruction card over its left edge, the arm slot below.
-import { useRef, useState, type CSSProperties, type RefObject } from 'react';
+// Patient view (Figma 1:6): a left column (wordmark, white instruction card, arm) beside a big video panel with a Record control.
+import { useRef, useState, type RefObject } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { readFlipOrigin, useFlipFrom } from '../landing/useFlipFrom';
@@ -14,10 +14,11 @@ import ArmSlot from '../ui/ArmSlot';
 import Badge from '../ui/Badge';
 import Button from '../ui/Button';
 import Wordmark from '../ui/Wordmark';
+import RecordButton from '../recording/RecordButton';
+import { useRecorder } from '../recording/useRecorder';
 
 const SLIDE = { type: 'spring', bounce: 0, duration: 0.7 } as const;
-const COLUMN = 'clamp(10rem, 13vw, 13.75rem)'; // left column: arm slot width
-const LAYOUT_VARS = { '--col': COLUMN, '--video-left': `calc(${COLUMN} + 3rem)` } as CSSProperties;
+const COLUMN = 'lg:grid-cols-[clamp(13rem,17vw,17rem)_1fr]'; // left column: wordmark, instruction card, arm
 
 /** Calm moving shimmer while the camera and pose model start. */
 function StartingOverlay({ reduced }: { reduced: boolean | null }) {
@@ -64,13 +65,14 @@ function ErrorOverlay({ onDemo }: { onDemo: () => void }) {
 }
 
 /** Video, demo backdrop, pose canvas, status overlays and the glass controls inside the panel. */
-function VideoSurface({ videoRef, demo, status, error, onDemo, reduced }: {
+function VideoSurface({ videoRef, demo, status, error, onDemo, reduced, recorder }: {
   videoRef: RefObject<HTMLVideoElement>;
   demo: boolean;
   status: 'starting' | 'running' | 'demo' | 'error';
   error?: string;
   onDemo: () => void;
   reduced: boolean | null;
+  recorder: ReturnType<typeof useRecorder>;
 }) {
   return (
     <>
@@ -102,14 +104,15 @@ function VideoSurface({ videoRef, demo, status, error, onDemo, reduced }: {
         <div>{demo && <Badge dot className="!bg-white/75 backdrop-blur-md">{error ? 'Camera unavailable, demo data' : 'Demo data'}</Badge>}</div>
         <div className="flex items-center gap-2">
           <Badge className="backdrop-blur-md">Camera</Badge>
-          <Button
-            variant="quiet"
-            onClick={() => window.open('/doctor', 'truereach-doctor')}
-            className="!h-8 gap-1.5 !px-3.5 text-[0.7rem] uppercase tracking-[0.08em]"
-          >
-            Therapist view
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M7 17 17 7M8 7h9v9" /></svg>
-          </Button>
+          <RecordButton
+            state={recorder.state}
+            elapsedMs={recorder.elapsedMs}
+            available={recorder.available}
+            reason={recorder.reason}
+            onStart={() => void recorder.start()}
+            onStop={() => void recorder.stop()}
+            onRetry={recorder.retry}
+          />
         </div>
       </div>
 
@@ -128,6 +131,7 @@ function SessionView({ demo }: { demo: boolean }) {
   const navigate = useNavigate();
   const reduced = useReducedMotion();
   const { status, error } = usePatientSession({ side: 'right', videoRef, demo });
+  const recorder = useRecorder({ videoRef, cameraRunning: status === 'running' && !demo });
   const showDemo = demo || status === 'demo';
   const flipping = origin !== undefined && !reduced;
   useFlipFrom(panelRef, origin?.lensRect, 'panel');
@@ -149,12 +153,11 @@ function SessionView({ demo }: { demo: boolean }) {
     <motion.main
       initial={{ opacity: 1 }}
       exit={{ opacity: 0, transition: { duration: reduced ? 0.2 : 0.25, ease: 'easeOut' } }}
-      style={LAYOUT_VARS}
-      className="relative grid min-h-dvh grid-cols-[1fr_auto] content-start gap-4 p-4 sm:p-6 lg:block lg:h-dvh lg:overflow-hidden"
+      className={`relative grid min-h-dvh grid-cols-1 content-start gap-4 p-4 sm:p-6 lg:h-dvh lg:grid-rows-[auto_minmax(0,1fr)_auto] lg:overflow-hidden ${COLUMN}`}
     >
       <AlertTint />
 
-      <motion.div {...(flipping ? {} : brand)} className="relative col-span-2 lg:absolute lg:left-6 lg:top-6">
+      <motion.div {...(flipping ? {} : brand)} className="relative lg:col-start-1 lg:row-start-1">
         <Link ref={brandRef} to="/" aria-label="TrueReach, back to start" className="pressable inline-block" style={{ transitionProperty: 'transform' }}>
           <Wordmark size="md" />
         </Link>
@@ -164,18 +167,16 @@ function SessionView({ demo }: { demo: boolean }) {
         ref={panelRef}
         {...panel}
         aria-label="Camera"
-        className="material relative col-span-2 aspect-[4/3] overflow-hidden sm:aspect-video lg:absolute lg:bottom-6 lg:left-[var(--video-left)] lg:right-6 lg:top-6 lg:aspect-auto"
+        className="material relative aspect-[4/3] overflow-hidden sm:aspect-video lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:aspect-auto"
       >
-        <VideoSurface videoRef={videoRef} demo={showDemo} status={status} error={error} onDemo={() => navigate('/session?demo=1')} reduced={reduced} />
+        <VideoSurface videoRef={videoRef} demo={showDemo} status={status} error={error} onDemo={() => navigate('/session?demo=1')} reduced={reduced} recorder={recorder} />
       </motion.section>
 
-      <div className="pointer-events-none relative lg:absolute lg:inset-y-0 lg:left-6 lg:flex lg:items-center">
-        <motion.div {...card} className="pointer-events-auto lg:w-[clamp(20rem,26vw,25rem)]">
-          <InstructionCard />
-        </motion.div>
-      </div>
+      <motion.div {...card} className="relative flex min-h-0 flex-col lg:col-start-1 lg:row-start-2">
+        <InstructionCard className="lg:min-h-0 lg:flex-1" />
+      </motion.div>
 
-      <motion.div {...arm} className="material relative self-end p-2.5 lg:absolute lg:bottom-6 lg:left-6" style={{ width: 'var(--col)' }}>
+      <motion.div {...arm} className="material relative p-2.5 lg:col-start-1 lg:row-start-3">
         <ArmSlot className="aspect-square w-full"><ArmViewer /></ArmSlot>
       </motion.div>
     </motion.main>
