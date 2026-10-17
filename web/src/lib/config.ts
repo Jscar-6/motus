@@ -14,11 +14,14 @@ export const PLACEHOLDER_MIN_FLAG_MS = 300;
 export const PLACEHOLDER_VIS_MIN = 0.5;
 // SOURCE: placeholder until E4 (hand-tuned during spot check); normalized image units
 export const PLACEHOLDER_TOUCH_RADIUS = 0.05;
-// SOURCE: placeholder. RPSS gives fixed cm, not arm-length ratios (docs/research.md, D4); replaced once the
-// PLAN.md §20 RPSS-placement proposal is accepted.
-export const PLACEHOLDER_NEAR_RATIO = 0.8;
-// SOURCE: placeholder, same reason as PLACEHOLDER_NEAR_RATIO (docs/research.md, D4).
-export const PLACEHOLDER_FAR_RATIO = 1.2;
+// Target setup (PLAN.md §9.1). All distances are cm from the table's front edge, on the trunk midline.
+// SOURCE: RPSS, Levin et al. 2004 p. 11 (docs/research.md). The chair is moved until the fully extended arm's
+// distal wrist crease sits over this mark, which scales both targets to the patient's arm length.
+export const RPSS_WRIST_MARK_CM = 4;
+// SOURCE: RPSS, Levin et al. 2004 p. 11: near (close) target, reachable with no trunk movement.
+export const RPSS_NEAR_CM = 1;
+// SOURCE: RPSS, Levin et al. 2004 p. 11: far target, needs about 25% of the reach from the trunk.
+export const RPSS_FAR_CM = 30;
 
 export const FORWARD_REACH: ExerciseProfile = {
   id: 'forward_reach',
@@ -33,8 +36,6 @@ export const FORWARD_REACH: ExerciseProfile = {
   minFlagMs: PLACEHOLDER_MIN_FLAG_MS,
   visMin: PLACEHOLDER_VIS_MIN,
   touchRadius: PLACEHOLDER_TOUCH_RADIUS,
-  nearRatio: PLACEHOLDER_NEAR_RATIO,
-  farRatio: PLACEHOLDER_FAR_RATIO,
 };
 
 export const EXERCISES: ExerciseProfile[] = [FORWARD_REACH];
