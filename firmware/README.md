@@ -1,3 +1,19 @@
 # firmware
 
-ESP32 sleeve firmware (PlatformIO): 3× MPU6050 → Madgwick quaternions over USB serial, 3 vibration motors. Owner: Jack (B1–B4). Serial protocol: PLAN.md §16.
+ESP32 sleeve firmware (PlatformIO): 3 IMUs → Madgwick quaternions over USB serial at 100 Hz, plus vibration motors. Owner: Jack (B1–B4). Protocol: PLAN.md §16. How the angles are computed: `docs/sleeve.md`.
+
+```bash
+cd firmware
+pio run -t upload       # flash (~25 s at 115200 upload baud)
+pio device monitor      # 921600 baud; type G, P or V,1,1 + Enter to test
+```
+
+| Line | Meaning |
+|---|---|
+| `D,ms,uw,ux,uy,uz,fw,fx,fy,fz,cw,cx,cy,cz` | 100 Hz quaternions: upper arm, forearm, chest |
+| `S,READY` / `S,IMU_FAIL,<1-3>` / `S,PONG` | status (IMU numbers follow the D order) |
+| `S,ZERO_OK` / `S,ZERO_MOVED` | reply to `G` (2 s gyro-bias + shared heading reset) |
+| `V,<motor>,<pattern>` (in) | motor 1 = chest, 3 = upper arm; pattern 0 off, 1 pulse, 2 double, 3 on |
+
+- **Sensors:** our GY-521 boards are MPU6500-compatible clones, so the firmware talks to the registers directly instead of using Adafruit_MPU6050.
+- **Upload speed:** 115200, because the default 460800 failed on the ELEGOO board.
