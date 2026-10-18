@@ -13,7 +13,7 @@ Components of the physician's patient overview (`/physician/:patientId`, F11, Fi
 | `MicPanel.tsx` | Mic button and buzz sensitivity |
 | `SessionDataCard.tsx` | Time compensating, flags, peaks, length and mode for the selected recording |
 | `useSelection.ts` | Selected recording, auto-follow of new arrivals, "New" markers |
-| `useVoiceNote.ts` | Voice flow: listen, edit, send to Gemini, reply, finish |
+| `useVoiceNote.ts` | Voice flow: listen, edit, send to Gemini, reply, finish; the confirmed instruction and reply are broadcast to the patient's card |
 | `useRecordingNote.ts` | One cached coach note per recording, built from its stored peaks and flag counts |
 | `useTypewriter.ts` | Character-by-character reveal (instant under reduced motion) |
 

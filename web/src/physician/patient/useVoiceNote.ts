@@ -1,5 +1,6 @@
-// The doctor's voice-instruction flow: listen, edit the transcript, send it to Gemini, show the reply, finish.
+// The doctor's voice-instruction flow: listen, edit the transcript, send it to Gemini, show the reply, finish; each step is shared live with the patient's screen.
 import { useEffect, useRef, useState } from 'react';
+import { sendPhysicianNote } from '../../db/physicianNotes';
 import { sendVoice, type CoachSource } from '../../doctor/coach/coachApi';
 import { buildCoachContext } from '../../doctor/coach/context';
 import { isSpeechSupported, startRecognition } from '../../doctor/coach/speech';
@@ -21,8 +22,8 @@ export interface VoiceNote {
   finish: () => void;         // the second check mark, or the discard button: back to idle
 }
 
-/** State machine behind the transcript box and the mic card. */
-export function useVoiceNote(): VoiceNote {
+/** State machine behind the transcript box and the mic card; confirmed instructions and replies are broadcast to `patientId`. */
+export function useVoiceNote(patientId: string): VoiceNote {
   const [supported] = useState(isSpeechSupported);
   const [phase, setPhase] = useState<VoicePhase>('idle');
   const [text, setText] = useState('');
@@ -80,7 +81,10 @@ export function useVoiceNote(): VoiceNote {
     const line = text.trim();
     if (!line || phase !== 'editing') return;
     setPhase('thinking');
+    const note = { id: crypto.randomUUID(), instruction: line, reply: null, sentAt: new Date().toISOString() };
+    void sendPhysicianNote(patientId, note);
     void sendVoice(line, buildCoachContext()).then((res) => {
+      void sendPhysicianNote(patientId, { ...note, reply: res.reply });
       if (!aliveRef.current) return;
       // STUB(S3): buzz sensitivity drives V,<motor>,<pattern> once S3 merges
       if (res.buzzSensitivity) setBuzz(res.buzzSensitivity);
