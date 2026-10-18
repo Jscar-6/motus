@@ -55,6 +55,7 @@ Shoulder hike, shoulder flexion and visibility stay with the camera (PLAN.md §6
 ## Serial protocol additions (need a §20 entry before merge)
 - `G` now replies `S,ZERO_OK`, or `S,ZERO_MOVED` (bias kept) if anything moved during the 2 s.
 - Motors as wired: `V,1,…` = chest, `V,3,…` = upper arm, `V,2,…` is ignored (no forearm motor).
+- `V,<motor>,<pattern>,<percent>`: optional strength 0–100. Without it, strength is 100, so existing commands are unchanged.
 
 ## Integration checklist (after C5 is on `main`)
 1. **Connect:** a "Connect sleeve" button creates `new SleeveLink(new SerialLineSource())` (or `fakeSleeve()` for demos), calls `connect()`, and subscribes `link.onFrame(pushSensorFrame)` (from `arm/armInput.ts`; drop its `STUB(S1)` marker).

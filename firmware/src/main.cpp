@@ -34,7 +34,7 @@ struct Imu {
 Imu imus[3] = {{&Wire, 0x68}, {&Wire, 0x69}, {&Wire1, 0x68}};
 
 // Motor IDs from the V command (PLAN.md §16). As wired: 1 = chest, 3 = upper arm; 2 has no motor.
-struct Motor { int id; int pin; int pattern = 0; uint32_t startMs = 0; bool on = true; };
+struct Motor { int id; int pin; int pattern = 0; uint32_t startMs = 0; int duty = 255; int level = -1; };
 Motor motors[] = {{1, 25}, {3, 27}};
 
 /** Write one byte to a sensor register; false if it didn't acknowledge. */
@@ -108,10 +108,10 @@ void zeroSensors() {
   Serial.println("S,ZERO_OK");
 }
 
-/** Start or stop a motor pattern: 0 off, 1 pulse 150 ms, 2 double pulse, 3 on until 0. */
-void setMotor(int id, int pattern) {
+/** Start or stop a motor pattern (0 off, 1 pulse 150 ms, 2 double pulse, 3 on until 0) at a strength in percent. */
+void setMotor(int id, int pattern, int percent) {
   for (Motor &m : motors)
-    if (m.id == id) { m.pattern = pattern; m.startMs = millis(); }
+    if (m.id == id) { m.pattern = pattern; m.startMs = millis(); m.duty = constrain(percent, 0, 100) * 255 / 100; }
 }
 
 /** Drive each motor pin from its pattern and the time since it started. */
@@ -121,18 +121,23 @@ void updateMotors() {
     uint32_t e = now - m.startMs;
     bool on = (m.pattern == 1 && e < 150) || (m.pattern == 2 && (e < 150 || (e >= 250 && e < 400))) || m.pattern == 3;
     if ((m.pattern == 1 && e >= 150) || (m.pattern == 2 && e >= 400)) m.pattern = 0;
-    if (on != m.on) analogWrite(m.pin, on ? 255 : 0);
-    m.on = on;
+    int level = on ? m.duty : 0;
+    if (level != m.level) analogWrite(m.pin, level);
+    m.level = level;
   }
 }
 
-/** Handle one command line from the browser: G, P, or V,<motor>,<pattern>. */
+/** Handle one command line from the browser: G, P, or V,<motor>,<pattern>[,<percent>] (strength defaults to 100). */
 void handleCommand(const String &line) {
   if (line == "G") zeroSensors();
   else if (line == "P") Serial.println("S,PONG");
   else if (line.startsWith("V,")) {
     int comma = line.indexOf(',', 2);
-    if (comma > 0) setMotor(line.substring(2, comma).toInt(), line.substring(comma + 1).toInt());
+    if (comma > 0) {
+      int comma2 = line.indexOf(',', comma + 1);
+      int pattern = line.substring(comma + 1, comma2 > 0 ? comma2 : line.length()).toInt();
+      setMotor(line.substring(2, comma).toInt(), pattern, comma2 > 0 ? line.substring(comma2 + 1).toInt() : 100);
+    }
   }
 }
 
