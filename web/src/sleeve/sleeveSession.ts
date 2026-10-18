@@ -20,12 +20,13 @@ interface SleeveState {
   zero: 'none' | 'ok' | 'moved' | 'timeout';
   lostImus: (1 | 2 | 3)[];  // IMU numbers from S,IMU_FAIL (1 upper arm, 2 forearm, 3 chest)
   restReady: boolean;       // a sleeve rest pose exists, so sleeve features are live
+  connectedAt: number;      // performance.now() when the port opened (the board restarts then)
   chestUpright: boolean;
   error?: string;
 }
 
 export const useSleeve = create<SleeveState>(() => ({
-  conn: 'off', source: null, zero: 'none', lostImus: [], restReady: false, chestUpright: true,
+  conn: 'off', source: null, zero: 'none', lostImus: [], restReady: false, chestUpright: true, connectedAt: 0,
 }));
 
 let link: SleeveLink | null = null;
@@ -79,7 +80,7 @@ export async function connectSleeve(source: 'usb' | 'demo'): Promise<void> {
   }
   link = l;
   buzz = createBuzzController((motor, pattern) => void l.buzz(motor, pattern));
-  useSleeve.setState({ conn: 'live' });
+  useSleeve.setState({ conn: 'live', connectedAt: performance.now() });
 }
 
 /** Turn the motors off and close the connection. */
