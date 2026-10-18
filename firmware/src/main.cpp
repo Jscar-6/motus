@@ -11,9 +11,10 @@ constexpr uint32_t I2C_HZ = 100000;
 constexpr uint32_t BAUD = 921600;    // PLAN.md §16; fall back to 115200 + 50 Hz if lines get corrupted
 constexpr uint32_t PERIOD_US = 10000;  // 100 Hz
 constexpr uint32_t ZERO_MS = 2000;   // `G`: hold still this long while the gyro bias is measured
-// SOURCE: hand-set. The sleeve is sewn into the suit, so zeroing happens while worn and sitting still; breathing and
-// small tremor stay under this, deliberate movement doesn't. A window counts as "moved" if any gyro axis spans more.
-constexpr float ZERO_MAX_SPAN_DPS = 15.0f;
+// SOURCE: hand-set; halved from 15 because slow movement during zeroing passed the check and got baked into the gyro
+// bias. The sleeve is sewn into the suit, so zeroing happens while worn and sitting still. A window counts as "moved"
+// if any gyro axis spans more. Not yet checked that breathing and tremor stay under 7.5 (wear_test.py).
+constexpr float ZERO_MAX_SPAN_DPS = 7.5f;
 constexpr int MAX_MISSES = 10;          // 0.1 s of failed reads marks an IMU as lost
 constexpr uint32_t RETRY_MS = 1000;     // how often a lost IMU is re-initialised (a Dupont wire can wiggle loose)
 
