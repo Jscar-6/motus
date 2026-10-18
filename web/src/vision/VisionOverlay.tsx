@@ -125,8 +125,8 @@ function usePublishToLive(v: ReturnType<typeof useVisionModel>): void {
   const lastFlags = useRef<CompLabel[]>([]);
   const seq = useRef(0);
   useEffect(() => {
-    useLive.setState({ restCaptured: v.capture?.kind === 'done', near: v.target?.near ?? v.near });
-  }, [v.capture, v.target, v.near]);
+    useLive.setState({ restCaptured: v.capture?.kind === 'done', near: v.target?.near ?? v.near, targetSet: !!v.target, reps: v.reps.length });
+  }, [v.capture, v.target, v.near, v.reps]);
   useEffect(() => {
     if (!v.frame && !v.features) return;
     const t = performance.now();
