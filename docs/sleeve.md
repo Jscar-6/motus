@@ -57,11 +57,14 @@ Shoulder hike, shoulder flexion and visibility stay with the camera (PLAN.md §6
 - Motors as wired: `V,1,…` = chest, `V,3,…` = upper arm, `V,2,…` is ignored (no forearm motor).
 - `V,<motor>,<pattern>,<percent>`: optional strength 0–100. Without it, strength is 100, so existing commands are unchanged.
 
-## Integration checklist (after C5 is on `main`)
-1. **Connect:** a "Connect sleeve" button creates `new SleeveLink(new SerialLineSource())` (or `fakeSleeve()` for demos), calls `connect()`, and subscribes `link.onFrame(pushSensorFrame)` (from `arm/armInput.ts`; drop its `STUB(S1)` marker).
-2. **Zero:** the setup step C1 calls `link.zero()` and shows ok / "moved, try again".
-3. **Rest:** when `live/pipeline.ts` captures the rest pose, also store `captureRestQuats(latestSensor())` and build `sleeveRest()`. Warn if `!chestUpright`.
-4. **Features:** in the pipeline, when the sensor status is `streaming` and a rest exists, `features = mergeSleeveFeatures(cameraFeatures, sleeveFeatures(frame, rest))`. The mode becomes `'camera+sleeve'`.
-5. **3D arm:** `PoseFusion` uses `bodyRotationsSinceRest()` instead of `cal⁻¹·q` + `remapSensorQuat` (`STUB(S2)`).
-6. **Buzz:** `createBuzzController(link.buzz)`. Each frame, call `update(rules.flags, useLive.getState().buzz, now)`; call `stop()` on disconnect.
-7. **Fake sleeve:** replace `arm/simSensor.ts` (`STUB(A3)`) with `fakeSleeve()` through the same `SleeveLink`.
+## Integration (done)
+- `web/src/sleeve/sleeveSession.ts`: one shared connection, USB or demo.
+- The vision model captures the sleeve rest pose together with the camera's, merges sleeve features (`withSleeve`), and buzzes on flags.
+- `PoseFusion` uses `sleeveBodyRotations()`.
+- The Session camera panel has a **Sleeve** pill: connect, Zero, and status.
+
+Session order:
+1. Connect (the board restarts when the port opens).
+2. Zero, with the sleeve flat and the X arrows aligned.
+3. Put the sleeve on.
+4. Capture rest pose.

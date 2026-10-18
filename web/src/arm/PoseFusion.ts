@@ -7,11 +7,18 @@ import { armConfig } from './armConfig';
 import { latestSensor, sensorStatus, toThreeQuat, visionSegments } from './armInput';
 import type { VisionAngles } from './armInput';
 import type { ArmPose } from './ArmRig';
-import type { PoseFrame } from '../lib/types';
+import type { PoseFrame, Quat } from '../lib/types';
+import { sleeveBodyRotations } from '../sleeve/sleeveSession';
 
 type Seg = 'chest' | 'upperArm' | 'forearm';
 const SEGS: Seg[] = ['chest', 'upperArm', 'forearm'];
 const Z_AXIS = new THREE.Vector3(0, 0, 1);
+const BODY_KEY = { chest: 'chest', upperArm: 'upper', forearm: 'fore' } as const;
+
+/** A [w,x,y,z] quaternion as a THREE.Quaternion. */
+function three(q: Quat): THREE.Quaternion {
+  return new THREE.Quaternion(q[1], q[2], q[3], q[0]);
+}
 
 /** Pulls the segment's sleeve quaternion out of a frame. */
 function imuQuat(seg: Seg): THREE.Quaternion | null {
@@ -61,10 +68,15 @@ export class PoseFusion {
     const kVis = 1 - Math.exp(-dt * armConfig.visionWeight);
     const kSmooth = 1 - Math.exp(-dt * armConfig.poseSmoothing);
 
+    // A live sleeve with a rest pose gives body-frame rotations directly (S2); otherwise (e.g. replay) fall back
+    // to rotation since this viewer's own calibration.
+    const body = imuOn ? sleeveBodyRotations() : null;
     const segments: ArmPose['segments'] = {};
     for (const seg of SEGS) {
       let rel: THREE.Quaternion | null = null;
-      if (imuOn) {
+      if (body) {
+        rel = three(body[BODY_KEY[seg]]);
+      } else if (imuOn) {
         rel = imuQuat(seg);
         const cal = this.cal[seg];
         if (rel && cal) rel.premultiply(cal);

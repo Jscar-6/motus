@@ -6,6 +6,7 @@ import { computeFeatures, RestPoseCapture, type RestCaptureStatus } from '../lib
 import { RepTracker } from '../lib/reps';
 import { createRuleTracker, finishRep, type RuleState } from '../lib/rules';
 import type { CompLabel, FrameFeatures, PoseFrame, RepResult, Side, Target } from '../lib/types';
+import { buzzOnFlags, captureSleeveRest, withSleeve } from '../sleeve/sleeveSession';
 import { isTouching } from './target';
 
 /** Vision model state plus the handlers the camera and controls call. */
@@ -48,16 +49,19 @@ export function useVisionModel() {
       setCapture(status);
       if (status.kind === 'done') {
         rest.current = status.restPose;
+        captureSleeveRest();
         repTracker.current.reset();
         ruleTracker.current.reset();
         capturing.current = null;
       }
     }
-    const feats = f && rest.current ? computeFeatures(f, rest.current, aspect) : null;
+    // With a connected, rested sleeve, lean / rotation / elbow come from the IMUs (PLAN.md §6.1); otherwise camera only.
+    const feats = withSleeve(f && rest.current ? computeFeatures(f, rest.current, aspect) : null);
     setFeatures(feats);
     if (rest.current) {
       const state = ruleTracker.current.update(feats, target?.near ?? true);
       setRules(state);
+      buzzOnFlags(state.flags);
       const ev = repTracker.current.update({ features: feats, touching: touch, near: target?.near });
       setInRep(ev.kind === 'started' || ev.kind === 'in_rep');
       if (ev.kind === 'started') repFlags.current.clear();

@@ -7,4 +7,4 @@ F10 Gemini live coach and voice buzz control for the therapist portal. `CoachPan
 - `templateCoach.ts` writes deterministic notes and parses spoken "lower / stronger / normal" from the same numbers (badge says "Template").
 - `useCoach.ts` requests a note every 8 s and 1.5 s after a new flag.
 - `speech.ts` wraps the browser Web Speech API (Chrome); `MicCard` is disabled elsewhere.
-- Buzz sensitivity only changes the runtime setting via `setBuzz`; it never touches `config.ts` thresholds. Driving the sleeve motors is `STUB(S3)`.
+- Buzz sensitivity only changes the runtime setting via `setBuzz`; it never touches `config.ts` thresholds. The sleeve's buzz controller (`sleeve/sleeveSession`, S3) reads it to pick the motor pattern.
