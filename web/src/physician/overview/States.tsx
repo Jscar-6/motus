@@ -1,11 +1,11 @@
-// Non-happy-path views of the physician overview: database setup, error and no patients.
+// Non-happy-path views of the physician overview: database setup, error and no patients, plus the card they share.
 import type { ReactNode } from 'react';
 import { motion } from 'motion/react';
 import Button from '../../ui/Button';
 import { useSlideIn } from '../slideIn';
 
-/** Centred frosted card shared by the state views. */
-function StateCard({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
+/** Centred frosted card shared by the state views (and the sign-in gate). */
+export function StateCard({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   const enter = useSlideIn(1);
   return (
     <div className="grid flex-1 place-items-center py-8">

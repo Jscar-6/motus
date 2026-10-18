@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type UIEvent } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Link, useNavigate } from 'react-router-dom';
+import SignOutButton from '../auth/SignOutButton';
 import { hasDatabase } from '../db/supabase';
 import { usePatients, useRecordings } from '../db/hooks';
 import { rectOf, type FlipOrigin } from '../landing/useFlipFrom';
@@ -97,10 +98,11 @@ export default function Physician() {
       </AnimatePresence>
 
       {ready && (
-        <motion.div {...brand} className="mb-4 flex shrink-0 justify-center">
+        <motion.div {...brand} className="relative mb-4 flex shrink-0 justify-center">
           <Link ref={brandRef} to="/" aria-label="TrueReach, back to start" className="pressable inline-block" style={{ transitionProperty: 'transform' }}>
             <Wordmark size="md" />
           </Link>
+          <div className="absolute right-0 top-1/2 -translate-y-1/2"><SignOutButton /></div>
         </motion.div>
       )}
 
