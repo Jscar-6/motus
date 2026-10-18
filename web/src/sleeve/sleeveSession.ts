@@ -7,7 +7,7 @@ import { fakeSleeve } from '../lib/fakeSensor';
 import {
   bodyRotationsSinceRest, captureRestQuats, mergeSleeveFeatures, sleeveFeatures, sleeveRest, type SleeveRest,
 } from '../lib/orientation';
-import { SerialLineSource, SleeveLink, type SleeveStatus } from '../lib/serial';
+import { BridgeLineSource, SerialLineSource, SleeveLink, type LineSource, type SleeveStatus } from '../lib/serial';
 import { createBuzzController, type BuzzController } from '../lib/sleeveBuzz';
 import type { CompLabel, FrameFeatures, Mode, Quat } from '../lib/types';
 import { useLive } from '../live/store';
@@ -17,6 +17,7 @@ export type SleeveConn = 'off' | 'connecting' | 'live' | 'zeroing' | 'error';
 interface SleeveState {
   conn: SleeveConn;
   source: 'usb' | 'demo' | null;
+  via: 'bridge' | 'webserial' | 'fake' | null;  // how the data reaches the browser
   zero: 'none' | 'ok' | 'moved' | 'timeout';
   lostImus: (1 | 2 | 3)[];  // IMU numbers from S,IMU_FAIL (1 upper arm, 2 forearm, 3 chest)
   restReady: boolean;       // a sleeve rest pose exists, so sleeve features are live
@@ -26,7 +27,7 @@ interface SleeveState {
 }
 
 export const useSleeve = create<SleeveState>(() => ({
-  conn: 'off', source: null, zero: 'none', lostImus: [], restReady: false, chestUpright: true, connectedAt: 0,
+  conn: 'off', source: null, via: null, zero: 'none', lostImus: [], restReady: false, chestUpright: true, connectedAt: 0,
 }));
 
 let link: SleeveLink | null = null;
@@ -59,22 +60,44 @@ function teardown(): void {
   clearSensor();
   buzz = null;
   clearRest();
-  useSleeve.setState({ conn: 'off', source: null, zero: 'none', lostImus: [] });
+  useSleeve.setState({ conn: 'off', source: null, via: null, zero: 'none', lostImus: [] });
 }
 
-/** Connect the USB sleeve (call from a click: Chrome shows a port picker) or the demo sleeve. */
-export async function connectSleeve(source: 'usb' | 'demo'): Promise<void> {
-  if (link) return;
-  clearSensor();  // drop frames from an earlier (e.g. demo) connection so the status starts from 'offline'
-  useSleeve.setState({ conn: 'connecting', source, error: undefined });
-  const l = new SleeveLink(source === 'usb' ? new SerialLineSource() : fakeSleeve());
+/** Start a link on `src`, wired to the arm input and status handling. */
+async function open(src: LineSource): Promise<SleeveLink> {
+  const l = new SleeveLink(src);
   l.onFrame(pushSensorFrame);
   l.onStatus(onStatus);
   l.onClose(() => {
     if (link === l) teardown();
   });
+  await l.connect();
+  return l;
+}
+
+/**
+ * Connect the USB sleeve or the demo sleeve. USB tries the local bridge first (no port picker) and falls back to
+ * Web Serial (call from a click: Chrome then shows a port picker).
+ */
+export async function connectSleeve(source: 'usb' | 'demo'): Promise<void> {
+  if (link) return;
+  clearSensor();  // drop frames from an earlier (e.g. demo) connection so the status starts from 'offline'
+  useSleeve.setState({ conn: 'connecting', source, error: undefined });
+  let l: SleeveLink;
+  let via: SleeveState['via'] = 'fake';
   try {
-    await l.connect();
+    if (source === 'demo') {
+      l = await open(fakeSleeve());
+    } else {
+      try {
+        l = await open(new BridgeLineSource());
+        via = 'bridge';
+      } catch (bridgeError) {
+        console.info('Sleeve bridge unavailable, trying Web Serial:', bridgeError);
+        l = await open(new SerialLineSource());
+        via = 'webserial';
+      }
+    }
   } catch (e) {
     console.warn('Sleeve connect failed:', e);
     const cancelled = e instanceof DOMException && e.name === 'NotFoundError';  // user closed the port picker
@@ -83,7 +106,7 @@ export async function connectSleeve(source: 'usb' | 'demo'): Promise<void> {
   }
   link = l;
   buzz = createBuzzController((motor, pattern) => void l.buzz(motor, pattern));
-  useSleeve.setState({ conn: 'live', connectedAt: performance.now() });
+  useSleeve.setState({ conn: 'live', via, connectedAt: performance.now() });
 }
 
 /** Lines and valid frames received on the current connection (zeros when not connected). */
@@ -100,7 +123,7 @@ export async function disconnectSleeve(): Promise<void> {
   await l.disconnect();
 }
 
-/** `G` with the sleeve flat and still, X arrows aligned (docs/sleeve.md). Clears the rest pose. */
+/** `G`: sit still 2 s, sleeve on is fine (docs/sleeve.md). Clears the rest pose. */
 export async function zeroSleeve(): Promise<void> {
   if (!link) return;
   useSleeve.setState({ conn: 'zeroing' });

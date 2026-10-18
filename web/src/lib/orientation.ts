@@ -1,13 +1,13 @@
 // Sleeve math (S2): turns the three IMU quaternions into body angles. See docs/sleeve.md for the full picture.
 //
-// Each firmware quaternion q rotates that sensor's own axes into a shared earth frame (z up). The heading is
-// shared because `G` resets all three filters together while the sensors lie flat with their X arrows aligned.
-// Two poses tie the sensors to the body:
-//   1. `G` (sleeve flat on the table): one common heading for all sensors.
+// Each firmware quaternion q rotates that sensor's own axes into an earth frame with z up. Tilt (relative to gravity)
+// is absolute; heading is only meaningful within one sensor, because the sleeve is sewn into the suit and the three
+// headings can't be aligned. So every feature uses either one sensor's own heading change or tilt from vertical:
+//   1. `G` (worn, sitting still): removes each gyro's bias.
 //   2. Rest capture (§9.2 C3, sitting upright, arm hanging straight): each segment's long axis is "straight down"
 //      (arm) or "straight up" (trunk) at that moment, so we read it from gravity, whatever angle the sensor sits
-//      at on the sleeve. The chest sensor's face (component side out on the sternum) gives the forward direction.
-// After that, every frame rotates those axes into the earth frame and measures angles between them.
+//      at on the sleeve. The chest sensor's face (component side out) gives the forward direction.
+// After that, every frame rotates those axes into the earth frame and measures angles.
 import type { Calibration, FrameFeatures, Quat, SensorFrame } from './types';
 
 export type Vec3 = [number, number, number];
@@ -134,9 +134,12 @@ export function sleeveFeatures(frame: SensorFrame, rest: SleeveRest): SleeveFeat
   const rotDeg = Math.atan2(rest.forward[0] * fwdNow[1] - rest.forward[1] * fwdNow[0],
     rest.forward[0] * fwdNow[0] + rest.forward[1] * fwdNow[1]) * DEG;
 
-  const upperArm = qRotate(frame.upper, rest.upperAxis);
-  const forearm = qRotate(frame.fore, rest.foreAxis);
-  const elbowDeg = angleDeg([-upperArm[0], -upperArm[1], -upperArm[2]], forearm);
+  // Elbow in the side-view plane, like the camera and the TRSP features (D2): each segment's elevation from straight
+  // down needs only gravity, so the arm sensors' unaligned headings don't matter. Straight arm = equal elevations.
+  const elevation = (d: Vec3) => angleDeg(d, DOWN);
+  const upperArm = elevation(qRotate(frame.upper, rest.upperAxis));
+  const forearm = elevation(qRotate(frame.fore, rest.foreAxis));
+  const elbowDeg = 180 - Math.abs(forearm - upperArm);
   return { leanDeg, rotDeg, elbowDeg };
 }
 
