@@ -5,8 +5,9 @@ fine, so the app talks to this bridge instead (web/src/lib/serial.ts BridgeLineS
   GET  /stream  Server-Sent Events, one event per D,/S, line
   POST /cmd     body = one command line (G, P, V,<motor>,<pattern>[,<percent>])
 
-Run (keep it open during the session):
-  ~/.local/share/pipx/venvs/platformio/bin/python ~/Workspace/motus/firmware/tools/sleeve_bridge.py
+Run from the repo root and keep it open during the session (any OS; finds the ESP32's USB port by itself):
+  python3 -m pip install pyserial      # once
+  python3 firmware/tools/sleeve_bridge.py
 """
 import argparse
 import queue
@@ -15,6 +16,9 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import serial
+from serial.tools import list_ports
+
+USB_VENDOR_IDS = {0x10C4, 0x1A86}  # CP210x (our ELEGOO boards) and CH340, as in web/src/lib/serial.ts
 
 clients = set()           # one queue per connected browser
 clients_lock = threading.Lock()
@@ -30,18 +34,29 @@ def broadcast(line):
                 q.put(line)
 
 
+def find_port():
+    """The first USB serial port from an ESP32 USB chip (e.g. /dev/ttyUSB0, /dev/cu.usbserial-*, COM3), or None."""
+    for p in list_ports.comports():
+        if p.vid in USB_VENDOR_IDS:
+            return p.device
+    return None
+
+
 def serial_loop(port, baud):
     """Keep the serial port open, reconnecting after unplugs, and broadcast every line it sends."""
     global ser
     while True:
         try:
+            device = port or find_port()
+            if not device:
+                raise serial.SerialException("no ESP32 USB port found (plugged in? data cable?)")
             s = serial.Serial()
-            s.port, s.baudrate, s.timeout = port, baud, 0.1
+            s.port, s.baudrate, s.timeout = device, baud, 0.1
             s.dtr = s.rts = False  # released: on ESP32 boards these lines drive reset and boot mode
             s.open()
             with port_lock:
                 ser = s
-            print(f"Connected to {port} at {baud} baud", flush=True)
+            print(f"Connected to {device} at {baud} baud", flush=True)
             buf = b""
             while True:
                 buf += s.read(4096)
@@ -123,13 +138,18 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     """Start the serial reader thread and the HTTP server."""
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--port", default="/dev/ttyUSB0")
+    ap.add_argument("--port", help="serial port; default: auto-detect the ESP32")
     ap.add_argument("--baud", type=int, default=921600)
     ap.add_argument("--http-port", type=int, default=8765)
     args = ap.parse_args()
+    try:
+        server = ThreadingHTTPServer(("127.0.0.1", args.http_port), Handler)
+    except OSError:
+        # Checked before touching USB, so a second copy never fights the running one for the serial port.
+        raise SystemExit(f"A sleeve bridge is already running on port {args.http_port}; use that one.")
     threading.Thread(target=serial_loop, args=(args.port, args.baud), daemon=True).start()
     print(f"Sleeve bridge on http://localhost:{args.http_port}/stream (Ctrl+C to stop)", flush=True)
-    ThreadingHTTPServer(("127.0.0.1", args.http_port), Handler).serve_forever()
+    server.serve_forever()
 
 
 if __name__ == "__main__":
