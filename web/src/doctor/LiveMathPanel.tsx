@@ -114,7 +114,7 @@ export default function LiveMathPanel({ open, onToggle, collapsible, className }
             <p className="mt-3 text-[0.8rem] leading-snug text-ink-3">
               Flags after {minFlagMs} ms over threshold; uncertain below {visMin} visibility.
             </p>
-            <p className="mt-1 text-[0.8rem] leading-snug text-ink-3">Thresholds: placeholder until D3 (TRSP). Not yet data-validated.</p>
+            <p className="mt-1 text-[0.8rem] leading-snug text-ink-3">Thresholds: fitted on TRSP healthy participants (D3). Patient test pending (E2).</p>
           </section>
 
           <section className="rounded-[var(--radius-inner)] bg-white/70 p-3.5 shadow-[0_1px_2px_rgb(92_48_24/0.06)]">

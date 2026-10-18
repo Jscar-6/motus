@@ -2,14 +2,16 @@
 // Thresholds are set only by D3 (TRSP) and E4 (spot check); everyone else reads them.
 import type { ExerciseProfile } from './types';
 
-// SOURCE: placeholder until D3 (TRSP healthy frames)
-export const PLACEHOLDER_T_LEAN_DEG = 10;
-// SOURCE: placeholder until D3 (TRSP healthy frames)
-export const PLACEHOLDER_T_HIKE_RATIO = 0.1;
-// SOURCE: placeholder until D3 (TRSP healthy frames)
-export const PLACEHOLDER_T_ROT_DEG = 10;
-// SOURCE: placeholder until D3 (tuned on TRSP healthy frames)
-export const PLACEHOLDER_MIN_FLAG_MS = 300;
+// Thresholds below: D3, `python ml/thresholds.py` (docs/results.md "Thresholds (D3)", plots in docs/thresholds/).
+// SOURCE: TRSP healthy frames (H01–H10), Youden-J cutoff of |leanDeg|, clean vs lean_forward (sens 0.92, spec 0.92).
+export const T_LEAN_DEG = 8.3;
+// SOURCE: TRSP healthy frames (H01–H10), Youden-J cutoff of raised hikeRatio, clean vs shoulder_elevation (sens 0.67, spec 0.89).
+export const T_HIKE_RATIO = 0.047;
+// SOURCE: TRSP healthy frames (H01–H10), Youden-J cutoff of |rotDeg|, clean vs trunk_rotation (sens 0.85, spec 0.85).
+export const T_ROT_DEG = 9.2;
+// SOURCE: TRSP healthy frames (H01–H10), hold that maximises the mean Youden J of the three checks above,
+// replaying the rules.ts timer at 30 fps. Kinect is smoother than the webcam; E4 may lengthen it (hand-tuned).
+export const MIN_FLAG_MS = 67;
 // SOURCE: placeholder until E4 (hand-tuned during spot check)
 export const PLACEHOLDER_VIS_MIN = 0.5;
 // SOURCE: placeholder until E4 (hand-tuned during spot check); normalized image units
@@ -32,8 +34,8 @@ export const FORWARD_REACH: ExerciseProfile = {
   goal: { kind: 'touch_target' },
   usesNearFar: true,
   checks: { lean: 'near_only', hike: true, rot: true }, // lean near-only: RPSS
-  thresholds: { lean: PLACEHOLDER_T_LEAN_DEG, hike: PLACEHOLDER_T_HIKE_RATIO, rot: PLACEHOLDER_T_ROT_DEG },
-  minFlagMs: PLACEHOLDER_MIN_FLAG_MS,
+  thresholds: { lean: T_LEAN_DEG, hike: T_HIKE_RATIO, rot: T_ROT_DEG },
+  minFlagMs: MIN_FLAG_MS,
   visMin: PLACEHOLDER_VIS_MIN,
   touchRadius: PLACEHOLDER_TOUCH_RADIUS,
 };

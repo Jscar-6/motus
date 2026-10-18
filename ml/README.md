@@ -23,3 +23,11 @@ python features.py        # writes data/features.csv (gitignored) and the D2 sum
 ```
 
 `features.load_features(trsp.load_all())` returns one row per frame of every forward-reach recording: `subject`, `task`, `side`, `healthy`, `t` (ms), `label`, and the PLAN.md §6.1 features. Lean, hike, elbow and shoulder flexion are measured on the side-view (sagittal) plane to match the webcam; rotation uses the horizontal plane. Each feature is relative to the clean frames that open the recording. The math mirrors `web/src/lib/features.ts`; change both together.
+
+## Thresholds (D3)
+
+```bash
+python thresholds.py      # needs data/features.csv; writes ../docs/thresholds/*.png and the D3 summary to ../docs/results.md
+```
+
+Fits the lean, hike and rotation cutoffs on **healthy** frames only (Youden's J, clean vs that compensation), measured the way `web/src/lib/rules.ts` reads them, then picks `minFlagMs` by replaying the `rules.ts` hold timer. It prints the values that go into `web/src/lib/config.ts`; patients stay held out for E2.
