@@ -17,15 +17,19 @@ export function targetFromClick(clientX: number, clientY: number, video: HTMLEle
   return { point: [(clientX - r.left) / r.width, (clientY - r.top) / r.height], near };
 }
 
-/** Estimated grasp point (mid-hand) in normalized image coordinates: the elbow→wrist line extended into the hand. */
+/** Estimated grasp point (mid-hand) from the elbow→wrist line extended into the hand: hand.ts's last fallback. */
 export function graspPoint(f: PoseFrame): { x: number; y: number } {
   const k = HAND_TO_FOREARM_RATIO * PLACEHOLDER_GRASP_HAND_FRACTION;
   return { x: f.wrist.x + (f.wrist.x - f.elbow.x) * k, y: f.wrist.y + (f.wrist.y - f.elbow.y) * k };
 }
 
-/** True when the elbow and wrist are visible and the estimated grasp point is within radius of the target. */
-export function isTouching(f: PoseFrame, target: Target, radius: number, visMin: number, aspect: number): boolean {
-  if ((f.elbow.vis ?? 0) < visMin || (f.wrist.vis ?? 0) < visMin) return false;
-  const tip = graspPoint(f);
-  return Math.hypot((tip.x - target.point[0]) * aspect, tip.y - target.point[1]) <= radius;
+/**
+ * True when the hand point (hand.ts) is within radius of the target. A point from the forearm line also needs the
+ * elbow and wrist visible; the hand and pose models only report hands they can see.
+ */
+export function isTouching(
+  f: PoseFrame, hand: { x: number; y: number; source: string }, target: Target, radius: number, visMin: number, aspect: number,
+): boolean {
+  if (hand.source === 'forearm' && ((f.elbow.vis ?? 0) < visMin || (f.wrist.vis ?? 0) < visMin)) return false;
+  return Math.hypot((hand.x - target.point[0]) * aspect, hand.y - target.point[1]) <= radius;
 }

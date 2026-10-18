@@ -12,7 +12,7 @@ import { pushFlag, pushSample, useLive } from '../live/store';
 import type { LiveSample } from '../live/types';
 import { EASE_OUT } from '../patient/motion';
 import CameraView from './CameraView';
-import { graspPoint, targetFromClick } from './target';
+import { targetFromClick } from './target';
 import { useVisionModel } from './useVisionModel';
 import SleevePill from '../sleeve/SleevePill';
 
@@ -146,7 +146,7 @@ export default function VisionOverlay({ trailing }: { trailing?: ReactNode }) {
   const v = useVisionModel();
   usePublishToLive(v);
   const r = FORWARD_REACH.touchRadius!;
-  const tip = v.frame ? graspPoint(v.frame) : null;
+  const tip = v.hand;
 
   return (
     <>
@@ -172,7 +172,8 @@ export default function VisionOverlay({ trailing }: { trailing?: ReactNode }) {
           {tip && (
             <div
               className="pointer-events-none absolute -ml-[5px] -mt-[5px] size-2.5 rounded-full bg-yellow-400"
-              style={{ left: `${tip.x * 100}%`, top: `${tip.y * 100}%` }}
+              style={{ left: `${tip.x * 100}%`, top: `${tip.y * 100}%`, opacity: tip.source === 'hand' ? 1 : 0.5 }}
+              title={tip.source === 'hand' ? 'Hand model' : 'Estimated from the arm'}
             />
           )}
         </div>

@@ -7,12 +7,14 @@ import { RepTracker } from '../lib/reps';
 import { createRuleTracker, finishRep, type RuleState } from '../lib/rules';
 import type { CompLabel, FrameFeatures, PoseFrame, RepResult, Side, Target } from '../lib/types';
 import { buzzOnFlags, captureSleeveRest, withSleeve } from '../sleeve/sleeveSession';
+import type { HandPoint } from './hand';
 import { isTouching } from './target';
 
 /** Vision model state plus the handlers the camera and controls call. */
 export function useVisionModel() {
   const [side, setSide] = useState<Side>('right');
   const [frame, setFrame] = useState<PoseFrame | null>(null);
+  const [hand, setHand] = useState<HandPoint | null>(null);
   const [features, setFeatures] = useState<FrameFeatures | null>(null);
   const [capture, setCapture] = useState<RestCaptureStatus | null>(null);
   const [fps, setFps] = useState(0);
@@ -32,10 +34,11 @@ export function useVisionModel() {
   const rest = useRef<PoseFrame | null>(null);
 
   /** Track frame rate, run the rest capture if active, compute features, and check the target touch. */
-  const onPose = (f: PoseFrame | null, aspect: number) => {
+  const onPose = (f: PoseFrame | null, aspect: number, h: HandPoint | null = null) => {
     const now = performance.now();
     setAspect(aspect);
-    const touch = !!f && !!target && isTouching(f, target, FORWARD_REACH.touchRadius!, FORWARD_REACH.visMin, aspect);
+    const touch = !!f && !!h && !!target && isTouching(f, h, target, FORWARD_REACH.touchRadius!, FORWARD_REACH.visMin, aspect);
+    setHand(h);
     setTouching(touch);
     times.current = [...times.current.filter((t) => now - t < 1000), now];
     setFps(times.current.length);
@@ -95,7 +98,7 @@ export function useVisionModel() {
   };
 
   return {
-    side, frame, features, capture, fps, aspect, near, target, touching, inRep, reps, rules,
+    side, frame, hand, features, capture, fps, aspect, near, target, touching, inRep, reps, rules,
     onPose, pickSide, pickNear, requestCapture, setTarget,
   };
 }
