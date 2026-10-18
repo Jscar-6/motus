@@ -10,4 +10,4 @@ uvicorn app.main:app --reload --port 8000
 
 ## Coach (F10)
 
-`POST /coach` `{context}` → `{text, source}` and `POST /coach/voice` `{transcript, context}` → `{reply, buzzSensitivity, source}`, in `app/coach.py`. They call Gemini (`GEMINI_API_KEY` and optional `GEMINI_MODEL` in the repo-root `.env`) with a 5 s timeout. With no key, or on any error, they answer from server-side templates built from the same numbers and set `source: "template"`, so the routes never return a 500 for a model failure. CORS allows the Vite dev origin on :5173.
+`POST /coach` `{context}` → `{text, source}` and `POST /coach/voice` `{transcript, context}` → `{reply, buzzSensitivity, source}`, in `app/coach.py`. They call Gemini (`GEMINI_API_KEY` and optional `GEMINI_MODEL` in the repo-root `.env`) with a 10 s timeout (the API minimum) and thinking turned off so short replies are never cut off. With no key, or on any error, they answer from server-side templates built from the same numbers and set `source: "template"`, so the routes never return a 500 for a model failure. CORS allows the Vite dev origin on :5173.
