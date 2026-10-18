@@ -45,10 +45,16 @@ type SphereOpts = Pick<Sphere, 'r'> & Partial<Pick<Sphere, 'sy' | 'sz' | 'center
 // x is shifted from the reference (-3.45) so the whole arm, shoulder to fingertips, is centered on the origin.
 const ROOT_POSITION: Vec3 = [-3.65, -0.35, 0];
 const ROOT_REST_EULER: Vec3 = [0, -0.3, 0.06];
+const FINGERTIP_REACH = 0.3;                    // past the last middle-finger bone, so the fingertip cap is in bounds
+const LIMB_PAD = 0.6;                           // hand-tuned: covers the widest tube radius (shoulder, 0.5) plus a little air
+const FOLLOW_YAW = -0.3;                         // hand-tuned: turns the side view ~17° toward the viewer so the hand stays readable
+const Y_AXIS = new THREE.Vector3(0, 1, 0);
+const Z_AXIS = new THREE.Vector3(0, 0, 1);
 const FINGER_GAIN = [1.2, 1.4, 0.9];
 const THUMB_GAIN = [0.3, 0.6, 0.7];
 
 export class ArmRig {
+  readonly mount = new THREE.Object3D();         // parent of root; scale.x = -1 mirrors the arm for a left-side view
   readonly root = new THREE.Object3D();
   readonly bones: THREE.Object3D[] = [];
   readonly byName: Record<string, THREE.Object3D> = {};
@@ -59,9 +65,11 @@ export class ArmRig {
   private readonly restQ: THREE.Quaternion[] = [];
   private readonly restE: THREE.Euler[] = [];
   private readonly tmp = new THREE.Quaternion();
+  private readonly tip = new THREE.Vector3();
 
   /** Builds the bone hierarchy and records every bone's rest pose. */
   constructor() {
+    this.mount.add(this.root);
     this.root.position.set(...ROOT_POSITION);
     this.root.rotation.set(...ROOT_REST_EULER);
     this.rootRest = this.root.rotation.clone();
@@ -71,7 +79,7 @@ export class ArmRig {
       this.restQ.push(b.quaternion.clone());
       this.restE.push(b.rotation.clone());
     }
-    this.root.updateMatrixWorld(true);
+    this.mount.updateMatrixWorld(true);
   }
 
   /** Adds a bone under `parent` and registers it. */
@@ -189,13 +197,14 @@ export class ArmRig {
 
   /** Copies current bone world matrices into the shader uniform array. */
   syncTo(mats: THREE.Matrix4[]): void {
-    this.root.updateMatrixWorld(true);
+    this.mount.updateMatrixWorld(true);
     this.bones.forEach((b, i) => mats[i].copy(b.matrixWorld));
   }
 
   /** Returns every bone and the root to the rest pose. */
   resetPose(): void {
     this.bones.forEach((b, i) => b.quaternion.copy(this.restQ[i]));
+    this.root.position.set(...ROOT_POSITION);
     this.root.rotation.copy(this.rootRest);
   }
 
@@ -234,5 +243,34 @@ export class ArmRig {
     upper.quaternion.copy(this.restQ[this.bones.indexOf(upper)]).multiply(this.tmp.copy(C).invert().multiply(U));
     fore.quaternion.copy(this.restQ[this.bones.indexOf(fore)]).multiply(this.tmp.copy(U).invert().multiply(F));
     for (const name of Object.keys(this.fingers)) this.setCurl(name, armConfig.relaxedCurl);
+  }
+
+  /**
+   * Poses the arm straight from the video's side-view angles (radians, counterclockwise, forward = +x), so it matches
+   * the arm on screen with no calibration; `mirrored` flips it to face left, as a left-side video does.
+   */
+  followImage(upperAngle: number, foreAngle: number, mirrored: boolean): void {
+    this.resetPose();
+    this.mount.scale.x = mirrored ? -1 : 1;
+    this.root.position.set(0, 0, 0);
+    this.root.quaternion.setFromAxisAngle(Y_AXIS, FOLLOW_YAW).multiply(this.tmp.setFromAxisAngle(Z_AXIS, upperAngle));
+    this.byName.upperArm.quaternion.identity();
+    this.byName.forearm.quaternion.setFromAxisAngle(Z_AXIS, foreAngle - upperAngle);
+    for (const name of Object.keys(this.fingers)) this.setCurl(name, armConfig.relaxedCurl);
+  }
+
+  /** World-space bounds (x, y) of the shoulder, elbow, wrist and middle fingertip, padded by the limb radius. */
+  extent(out: THREE.Box2): THREE.Box2 {
+    this.mount.updateMatrixWorld(true);
+    out.makeEmpty();
+    const middle = this.fingers.middle;
+    const points = [this.byName.upperArm, this.byName.forearm, this.byName.hand];
+    for (const b of points) {
+      b.getWorldPosition(this.tip);
+      out.expandByPoint(new THREE.Vector2(this.tip.x, this.tip.y));
+    }
+    middle[middle.length - 1].localToWorld(this.tip.set(FINGERTIP_REACH, 0, 0));
+    out.expandByPoint(new THREE.Vector2(this.tip.x, this.tip.y));
+    return out.expandByScalar(LIMB_PAD);
   }
 }

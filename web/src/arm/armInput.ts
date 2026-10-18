@@ -19,8 +19,7 @@ let windowStart = 0;
 let windowCount = 0;
 const listeners = new Set<Listener>();
 
-// STUB(S1): replace when S1 merges
-/** Stores the newest sleeve frame and notifies subscribers; S1's serial reader calls this for each `D,` line. */
+/** Stores the newest sleeve frame and notifies subscribers; sleeve/sleeveSession calls this for each `D,` line. */
 export function pushSensorFrame(frame: SensorFrame): void {
   const now = performance.now();
   latest = frame;
@@ -32,6 +31,13 @@ export function pushSensorFrame(frame: SensorFrame): void {
     windowStart = now;
   }
   listeners.forEach((fn) => fn(frame));
+}
+
+/** Forgets the last sleeve frame, so the status reads 'offline' again (the sleeve was disconnected). */
+export function clearSensor(): void {
+  latest = null;
+  rate = 0;
+  windowCount = 0;
 }
 
 /** Subscribes to every pushed sleeve frame; returns the unsubscribe function. */
@@ -56,8 +62,10 @@ export function sensorStatus(): SensorStatus {
   return performance.now() - lastAt > armConfig.staleAfterMs ? 'stale' : 'streaming';
 }
 
-// STUB(S2): replace when S2 merges
-/** Maps a sensor-frame rotation into the arm model's frame; S2's lib/orientation.ts owns the real mapping. */
+/**
+ * Sensor-frame rotation for the fallback path (no sleeve rest pose, e.g. replay). Live sessions with a rested sleeve
+ * skip this: PoseFusion uses sleeve/sleeveSession's body-frame rotations (lib/orientation.ts, S2).
+ */
 function remapSensorQuat(q: THREE.Quaternion): THREE.Quaternion {
   return q;
 }

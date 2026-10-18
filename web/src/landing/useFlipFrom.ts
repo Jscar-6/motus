@@ -9,6 +9,8 @@ export interface FlipOrigin { from: 'landing'; at: number; lensRect: FlipRect; w
 const MAX_AGE_MS = 10_000;
 const DURATION = 0.7;
 const SHADOW_ROOM = 64; // px the final clip reaches past the panel so its box-shadow is never cut off
+const VEIL_DELAY_MS = 100;    // the opening circle reads as the landing's paper disc for a beat first
+const VEIL_DURATION_MS = 450; // crossfade from paper to the panel, done before the 700 ms clip settles
 
 /** Plain-object copy of an element's rectangle (safe to put in router state). */
 export function rectOf(el: Element): FlipRect {
@@ -28,8 +30,8 @@ function clamp(v: number, lo: number, hi: number) {
   return Math.min(Math.max(v, lo), hi);
 }
 
-/** Open a circular clip-path window at `origin` into the full panel; returns a cancel function. */
-function revealPanel(el: HTMLElement, origin: FlipRect) {
+/** Open a circular clip-path window at `origin` into the full panel while `veil` fades off it; returns a cancel function. */
+function revealPanel(el: HTMLElement, origin: FlipRect, veil: HTMLElement | null) {
   const to = el.getBoundingClientRect();
   const k = Math.max(1, origin.width / to.width, origin.height / to.height);
   const w = origin.width / k;
@@ -46,8 +48,10 @@ function revealPanel(el: HTMLElement, origin: FlipRect) {
     Object.assign(from, { transform: `translate(${dx}px, ${dy}px) scale(${k})`, transformOrigin: '0 0' });
     Object.assign(end, { transform: 'translate(0px, 0px) scale(1)', transformOrigin: '0 0' });
   }
-  const anim = el.animate([from, end], { duration: DURATION * 1000, easing: `cubic-bezier(${EASE_OUT.join(', ')})` });
-  return () => anim.cancel();
+  const easing = `cubic-bezier(${EASE_OUT.join(', ')})`;
+  const anim = el.animate([from, end], { duration: DURATION * 1000, easing });
+  const fade = veil?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: VEIL_DURATION_MS, delay: VEIL_DELAY_MS, easing, fill: 'backwards' });
+  return () => { anim.cancel(); fade?.cancel(); };
 }
 
 /** Scale and move `el` uniformly from `origin` to its own rect; returns a cancel function. */
@@ -65,12 +69,12 @@ function flipText(el: HTMLElement, origin: FlipRect) {
   return () => { controls.cancel(); clear(); };
 }
 
-/** On mount, animate `ref` from `origin`: 'panel' opens a circle into the panel via clip-path, 'text' scales uniformly. */
-export function useFlipFrom(ref: RefObject<HTMLElement>, origin: FlipRect | undefined, shape: 'panel' | 'text') {
+/** On mount, animate `ref` from `origin`: 'panel' opens a circle into the panel via clip-path (fading `veil` off it), 'text' scales uniformly. */
+export function useFlipFrom(ref: RefObject<HTMLElement>, origin: FlipRect | undefined, shape: 'panel' | 'text', veil?: RefObject<HTMLElement>) {
   const reduced = useReducedMotion();
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el || !origin || reduced) return undefined;
-    return shape === 'panel' ? revealPanel(el, origin) : flipText(el, origin);
-  }, [ref, origin, reduced, shape]);
+    return shape === 'panel' ? revealPanel(el, origin, veil?.current ?? null) : flipText(el, origin);
+  }, [ref, origin, reduced, shape, veil]);
 }

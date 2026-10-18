@@ -81,7 +81,7 @@ export default function MicCard({ className }: { className?: string }) {
     try {
       const res = await sendVoice(transcript, buildCoachContext());
       useCoachStore.getState().push('coach', res.reply, res.source);
-      // STUB(S3): buzz sensitivity drives V,<motor>,<pattern> once S3 merges
+      // The sleeve's buzz controller (sleeve/sleeveSession, S3) reads this setting for its motor pattern.
       if (res.buzzSensitivity) setBuzz(res.buzzSensitivity);
     } finally {
       useCoachStore.getState().endPending();

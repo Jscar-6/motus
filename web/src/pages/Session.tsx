@@ -95,13 +95,14 @@ export default function Session() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const brandRef = useRef<HTMLAnchorElement>(null);
+  const veilRef = useRef<HTMLDivElement>(null);
   const { state } = useLocation();
   const [origin] = useState(() => readFlipOrigin(state));
   const reduced = useReducedMotion();
   const { status } = usePatientSession({ videoRef });
   const recorder = useRecorder({ videoRef, cameraRunning: status === 'running' });
   const flipping = origin !== undefined && !reduced;
-  useFlipFrom(panelRef, origin?.lensRect, 'panel');
+  useFlipFrom(panelRef, origin?.lensRect, 'panel', veilRef);
   useFlipFrom(brandRef, origin?.wordmarkRect, 'text');
   const brand = useMaterialize({ delay: 0, y: 8, blur: 6 });
   const card = useMaterialize({ delay: 0.12, x: -16, y: 0, blur: 8, duration: 0.6 });
@@ -151,6 +152,7 @@ export default function Session() {
             }
           />
         </VideoSurface>
+        {flipping && <div ref={veilRef} aria-hidden className="pointer-events-none absolute inset-0 bg-paper opacity-0" />}
       </motion.section>
 
       <motion.div {...card} className="relative flex min-h-0 flex-col lg:col-start-1 lg:row-start-2">

@@ -25,7 +25,7 @@ export interface CoachContext {
   restCaptured: boolean;
   source: Source;
   buzz: BuzzSensitivity;
-  thresholds: { lean: number; hike: number; rot: number; minFlagMs: number; visMin: number; placeholders: true; note: string };
+  thresholds: { lean: number; hike: number; rot: number; minFlagMs: number; visMin: number; placeholders: boolean; note: string };
 }
 
 /** Round to a fixed number of decimals. */
@@ -73,8 +73,8 @@ export function buildCoachContext(): CoachContext {
       rot: th.rot,
       minFlagMs: FORWARD_REACH.minFlagMs,
       visMin: FORWARD_REACH.visMin,
-      placeholders: true,
-      note: 'Thresholds are placeholders until D3 (TRSP analysis) sets them.',
+      placeholders: false,
+      note: 'Lean, hike and rotation thresholds and minFlagMs are fitted on TRSP healthy participants (D3), not yet tested on patients (E2); visMin is a placeholder until E4.',
     },
   };
 }

@@ -1,5 +1,7 @@
-// The dotted 3D arm (F7): stippled "PLEASE PUT SLEEVE ON" that morphs into a bone-rigged arm. Fills its parent; drop it inside ArmSlot.
-// Camera-first: it reads the pose from the live store and never opens a webcam. Driving the arm from live data is off until validated.
+// The dotted 3D arm (F7): stippled "PUT ARM IN VIEW" that morphs into a bone-rigged arm. Fills its parent; drop it inside ArmSlot.
+// Camera-first: it reads the pose from the live store and never opens a webcam. The moment the camera sees the arm, the
+// words morph into the arm, which then copies the video's side view; when the hand leaves the frame, it morphs back.
+// Sleeve driving stays off until validated.
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -12,6 +14,7 @@ import { createArmPoints } from './particles';
 import { PoseFusion } from './PoseFusion';
 import { startSimSensor } from './simSensor';
 import { sampleText } from './textSampler';
+import { VisionFollow } from './VisionFollow';
 
 type Mode = 'arm' | 'text';
 
@@ -48,6 +51,9 @@ const ARM_HEIGHT = 2;
 const FIT_MARGIN = 1.12;
 const TEXT_ASPECT = 640 / 1400;
 const HOME_RATE = 3;
+const FIT_OUT_RATE = 5;                          // per second: zoom out fast so the arm never leaves the view
+const LOST_AFTER_S = 0.5;                        // hand-tuned: how long the arm must be out of frame before it turns back into words
+const FIT_IN_RATE = 1;                           // per second: zoom back in slowly so a rep doesn't make the view pulse
 
 const controllers = new Set<Controller>();
 let stopSim: (() => void) | null = null;
@@ -87,17 +93,20 @@ function register(c: Controller): () => void {
   };
 }
 
-/** Camera distance at which both the text block and the arm fit the view with a small margin. */
-function homeDistance(fovDeg: number, aspect: number): number {
+/** Camera distance at which a `w` x `h` box fits the view with a small margin. */
+function fitDistance(w: number, h: number, fovDeg: number, aspect: number): number {
   const tanHalf = Math.tan(THREE.MathUtils.degToRad(fovDeg / 2));
-  const textW = armConfig.textWorldWidth;
-  const needW = Math.max(textW, ARM_WIDTH);
-  const needH = Math.max(textW * TEXT_ASPECT, ARM_HEIGHT);
-  return (Math.max(needW / (2 * tanHalf * aspect), needH / (2 * tanHalf)) * FIT_MARGIN);
+  return Math.max(w / (2 * tanHalf * aspect), h / (2 * tanHalf)) * FIT_MARGIN;
 }
 
-/** Fills its parent with the morphing dot arm, a mode toggle, and the sleeve status line; `replay` morphs straight to the arm and follows the pose in the live store (physician playback). */
-export default function ArmViewer({ replay = false }: { replay?: boolean }) {
+/** Camera distance at which both the text block and the resting arm fit the view. */
+function homeDistance(fovDeg: number, aspect: number): number {
+  const textW = armConfig.textWorldWidth;
+  return fitDistance(Math.max(textW, ARM_WIDTH), Math.max(textW * TEXT_ASPECT, ARM_HEIGHT), fovDeg, aspect);
+}
+
+/** Fills its parent with the morphing dot arm, a mode toggle, and the sleeve status line; the arm follows the pose in the live store (live camera or physician playback). */
+export default function ArmViewer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const controllerRef = useRef<Controller | null>(null);
   const [showArm, setShowArm] = useState(false);
@@ -131,11 +140,15 @@ export default function ArmViewer({ replay = false }: { replay?: boolean }) {
     controls.enabled = false;
     const home = new THREE.Vector3(0, 0, 16);
     const origin = new THREE.Vector3();
+    const bounds = new THREE.Box2();
+    const center = new THREE.Vector2();
+    const size = new THREE.Vector2();
     camera.position.copy(home);
 
     const rig = new ArmRig();
     const fusion = new PoseFusion();
-    const state = { target: 0, progress: 0, drive: false, calibrated: false };
+    const follow = new VisionFollow();
+    const state = { target: 0, progress: 0, drive: false, seen: false, lostFor: 0 };
     let armPoints: ReturnType<typeof createArmPoints> | null = null;
     let disposed = false;
     let raf = 0;
@@ -167,8 +180,6 @@ export default function ArmViewer({ replay = false }: { replay?: boolean }) {
       camera.updateProjectionMatrix();
       home.z = homeDistance(camera.fov, camera.aspect);
       camera.position.setLength(home.z);
-      controls.minDistance = home.z * 0.5;
-      controls.maxDistance = home.z * 1.6;
       if (armPoints) armPoints.uniforms.uScale.value = (renderer.getPixelRatio() * h) / 300;
     };
     const resizeObserver = new ResizeObserver(resize);
@@ -189,12 +200,18 @@ export default function ArmViewer({ replay = false }: { replay?: boolean }) {
       armPoints.uniforms.uTime.value = elapsed;
 
       const latest = useLive.getState().latest;
-      if (replay) {
-        if (!latest) state.calibrated = false;
-        else if (!state.calibrated) state.calibrated = fusion.calibrate();
-      }
       const pose = fusion.update(dt, latest?.pose ?? null, latest?.aspect ?? 1);
-      if (state.drive && pose) rig.applyPose(pose);
+      const seen = follow.update(dt, latest?.pose ?? null, latest?.aspect ?? 1);
+      state.lostFor = seen ? 0 : state.lostFor + dt;
+      if (seen && !state.seen) {
+        state.seen = true;
+        controller.morphTo('arm');
+      } else if (state.seen && state.lostFor >= LOST_AFTER_S) {
+        state.seen = false;
+        controller.morphTo('text');
+      }
+      if (state.drive && pose && sensorStatus() === 'streaming') rig.applyPose(pose);
+      else if (follow.ready) rig.followImage(follow.upper, follow.fore, follow.mirrored);
       else rig.idle(elapsed, amplitude);
       rig.syncTo(armPoints.uniforms.uBones.value);
 
@@ -205,6 +222,16 @@ export default function ArmViewer({ replay = false }: { replay?: boolean }) {
         controls.target.lerp(origin, k);
       } else {
         controls.enabled = true;
+        // Keep the whole arm in view: slide it so its bounds are centered, and move the camera to fit them.
+        rig.extent(bounds).getCenter(center);
+        bounds.getSize(size);
+        const kMove = 1 - Math.exp(-dt * FIT_OUT_RATE);
+        rig.mount.position.x -= center.x * kMove;
+        rig.mount.position.y -= center.y * kMove;
+        const want = Math.max(fitDistance(size.x, size.y, camera.fov, camera.aspect), home.z * 0.6);
+        const have = camera.position.length();
+        const kFit = 1 - Math.exp(-dt * (want > have ? FIT_OUT_RATE : FIT_IN_RATE));
+        camera.position.setLength(have + (want - have) * kFit);
       }
       controls.update();
       renderer.render(scene, camera);
@@ -235,10 +262,6 @@ export default function ArmViewer({ replay = false }: { replay?: boolean }) {
       built.uniforms.uSwirl.value = reduced ? 0 : 1;
       scene.add(built.points);
       armPoints = built;
-      if (replay) {
-        controller.morphTo('arm');
-        state.drive = true;
-      }
       resize();
       syncLoop();
     })();
@@ -257,7 +280,7 @@ export default function ArmViewer({ replay = false }: { replay?: boolean }) {
       unregister();
       controllerRef.current = null;
     };
-  }, [replay]);
+  }, []);
 
   return (
     <div ref={containerRef} aria-label={`Arm model. ${STATUS_LABEL[status]}`} className="absolute inset-0">
