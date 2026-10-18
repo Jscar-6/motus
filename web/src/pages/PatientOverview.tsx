@@ -50,7 +50,7 @@ export default function PatientOverview() {
   const arm = (
     <section aria-label="Arm replay" className="material flex h-full flex-col gap-2 p-2.5">
       <span className="eyebrow truncate px-1.5 pt-1">{patient ? `${patient.name} · ${patient.affected_side} arm` : 'Arm replay'}</span>
-      <ArmSlot className="min-h-0 flex-1"><ArmViewer replay /></ArmSlot>
+      <ArmSlot className="min-h-0 flex-1"><ArmViewer /></ArmSlot>
     </section>
   );
 

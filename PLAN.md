@@ -486,18 +486,18 @@ flowchart LR
 - [x] **D1 (P1)** `ml/download_trsp.py` + `ml/trsp.py` loader + the §5 step 2 sanity checks → `docs/results.md`. @ehan
 
 **Phase 1, series:**
-- [ ] **B1** Wire 3 MPU6050s per §12; the ESP32 prints raw data from all three.
-- [ ] **B2** Madgwick quaternions as `D,` lines at 100 Hz; `S,READY`, `S,IMU_FAIL,<n>`, `G`, `P`/`S,PONG`.
-- [ ] **B3** Motor patterns 0–3 via `V,<motor>,<pattern>`.
+- [x] **B1** Wire 3 MPU6050s per §12; the ESP32 prints raw data from all three.
+- [x] **B2** Madgwick quaternions as `D,` lines at 100 Hz; `S,READY`, `S,IMU_FAIL,<n>`, `G`, `P`/`S,PONG`.
+- [x] **B3** Motor patterns 0–3 via `V,<motor>,<pattern>`.
 - [ ] **B4** Sleeve and chest clip with marked sensor spots.
 
 **Phase 1, parallel with B:**
-- [ ] **A3 (P1)** `web/src/lib/fakeSensor.ts`: emits `SensorFrame`s in the §16 format, for building S1–S2 before the hardware works.
+- [x] **A3 (P1)** `web/src/lib/fakeSensor.ts`: emits `SensorFrame`s in the §16 format, for building S1–S2 before the hardware works.
 
 **Phase 2, series (needs B2 + C2 + C5 on `main`):**
-- [ ] **S1 (P1)** `lib/serial.ts`: Web Serial reader for `D,`/`S,` and writer for `V`/`G`/`P`.
-- [ ] **S2 (P1)** `lib/orientation.ts`: IMU lean, rotation, and elbow relative to rep start; Zero-sensors flow; "Camera + Sleeve" mode switch.
-- [ ] **S3 (P1)** Buzz on rule flags.
+- [x] **S1 (P1)** `lib/serial.ts`: Web Serial reader for `D,`/`S,` and writer for `V`/`G`/`P`.
+- [x] **S2 (P1)** `lib/orientation.ts`: IMU lean, rotation, and elbow relative to rep start; Zero-sensors flow; "Camera + Sleeve" mode switch.
+- [x] **S3 (P1)** Buzz on rule flags.
 
 ### Ehan
 **Phase 0, parallel (no repo needed):**
@@ -844,3 +844,13 @@ truereach/
   - **Server routes that read sessions** (F6 `/report`, F10 coach) must read from Supabase once `/sessions` moves there. Coordinate with Ehan.
   - **Sleeve in the timeline:** record each `SensorFrame` as-is (`t` + three quaternions); replay goes through S2's `bodyRotationsSinceRest` (docs/sleeve.md) once the sleeve integration merges.
   - **Process:** plan changes go through a PR touching only PLAN.md, not a direct push to `main` (CLAUDE.md rules 11 and 15).
+- [PROPOSED] Jack · sleeve serial protocol as built (§16), shipped in #32. A teammate's OK is needed (§19): mark this `[ACCEPTED by <name>]`.
+  - **Motors:** 2 instead of 3. `V,1,…` = chest (GPIO 25), `V,3,…` = upper arm (GPIO 27), `V,2,…` is ignored. Lean and rotation buzz the chest; hike buzzes the upper arm (S3).
+  - **`V,<motor>,<pattern>[,<percent>]`:** optional strength 0–100 (default 100), so existing commands are unchanged.
+  - **New status lines:**
+    - `G` replies `S,ZERO_OK`, or `S,ZERO_MOVED` (old bias kept).
+    - A lost IMU sends `S,IMU_FAIL,<n>`, is retried every second, and sends `S,IMU_OK,<n>` when it's back.
+  - **§9.2 C1 wording:** for `G`, lay the sleeve and chest strap flat with all printed X arrows pointing the same way. This gives all three sensors one shared heading, which the 3D elbow angle needs.
+  - **Mounting:** the chest sensor sits component-side out, high on the chest, on the side opposite the reaching arm (docs/sleeve.md).
+  - **Hardware facts:** our IMUs are MPU6500-compatible clones (WHO_AM_I 0x70), so the firmware uses direct register access instead of Adafruit_MPU6050; the upload baud is 115200.
+  · tasks affected: B2, B3, S1, S3, §9.2 C1, §16.
