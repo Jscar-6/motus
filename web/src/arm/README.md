@@ -1,6 +1,6 @@
 # arm
 
-Daniel's 3D arm model (F7): a stippled "PLEASE PUT SLEEVE ON" that morphs into a dotted, bone-rigged arm. `ArmViewer` fills its parent and is mounted inside `ArmSlot` on the patient view and the therapist card. The canvas is transparent, so it sits on the paper or white card. Visual constants are hand-tuned in `armConfig.ts`.
+Daniel's 3D arm model (F7): a stippled "PUT ARM IN VIEW" that morphs into a dotted, bone-rigged arm. `ArmViewer` fills its parent and is mounted inside `ArmSlot` on the patient view and the therapist card. The canvas is transparent, so it sits on the paper or white card. Visual constants are hand-tuned in `armConfig.ts`.
 
 | File | Role |
 | --- | --- |

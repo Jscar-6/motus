@@ -1,4 +1,4 @@
-// The dotted 3D arm (F7): stippled "PLEASE PUT SLEEVE ON" that morphs into a bone-rigged arm. Fills its parent; drop it inside ArmSlot.
+// The dotted 3D arm (F7): stippled "PUT ARM IN VIEW" that morphs into a bone-rigged arm. Fills its parent; drop it inside ArmSlot.
 // Camera-first: it reads the pose from the live store and never opens a webcam. The moment the camera sees the arm, the
 // words morph into the arm, which then copies the video's side view; when the hand leaves the frame, it morphs back.
 // Sleeve driving stays off until validated.
