@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { sensorRateHz, sensorStatus } from '../arm/armInput';
 import { IMU_NAMES, serialSupported } from '../lib/serial';
-import { connectSleeve, disconnectSleeve, useSleeve, zeroSleeve } from './sleeveSession';
+import { connectSleeve, disconnectSleeve, sleeveStats, useSleeve, zeroSleeve } from './sleeveSession';
 
 // Opening the port restarts the ESP32: about 2.5 s to boot plus its 2 s start-up zero before frames flow again.
 const BOOT_GRACE_MS = 6000;
@@ -12,9 +12,10 @@ const BTN = 'pressable h-6 cursor-pointer rounded-full px-3 transition-colors du
 /** One-line status text for a connected sleeve. */
 function liveText(s: ReturnType<typeof useSleeve.getState>): { text: string; bad: boolean } {
   if (sensorStatus() !== 'streaming') {
-    return performance.now() - s.connectedAt < BOOT_GRACE_MS
-      ? { text: 'Starting sensors…', bad: false }
-      : { text: 'No sensor data · replug USB, then reconnect', bad: true };
+    if (performance.now() - s.connectedAt < BOOT_GRACE_MS) return { text: 'Starting sensors…', bad: false };
+    const { lines, frames } = sleeveStats();
+    if (lines === 0) return { text: 'Board sends nothing · replug USB, reconnect', bad: true };
+    return { text: `No valid frames (${lines} lines, ${frames} frames) · check baud`, bad: true };
   }
   if (s.lostImus.length) return { text: `${s.lostImus.map((n) => IMU_NAMES[n]).join(', ')} lost · check wire`, bad: true };
   if (s.zero === 'moved') return { text: 'Moved while zeroing · lay flat, retry', bad: true };

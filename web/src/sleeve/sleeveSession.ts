@@ -2,7 +2,7 @@
 // pushSensorFrame; the vision model calls captureSleeveRest / withSleeve / buzzOnFlags; PoseFusion reads
 // sleeveBodyRotations. Without a sleeve every function here is a no-op, so camera-only mode is unchanged.
 import { create } from 'zustand';
-import { latestSensor, pushSensorFrame, sensorStatus } from '../arm/armInput';
+import { clearSensor, latestSensor, pushSensorFrame, sensorStatus } from '../arm/armInput';
 import { fakeSleeve } from '../lib/fakeSensor';
 import {
   bodyRotationsSinceRest, captureRestQuats, mergeSleeveFeatures, sleeveFeatures, sleeveRest, type SleeveRest,
@@ -56,6 +56,7 @@ function onStatus(s: SleeveStatus): void {
 /** Forget the connection and reset the state shown in the UI. */
 function teardown(): void {
   link = null;
+  clearSensor();
   buzz = null;
   clearRest();
   useSleeve.setState({ conn: 'off', source: null, zero: 'none', lostImus: [] });
@@ -64,6 +65,7 @@ function teardown(): void {
 /** Connect the USB sleeve (call from a click: Chrome shows a port picker) or the demo sleeve. */
 export async function connectSleeve(source: 'usb' | 'demo'): Promise<void> {
   if (link) return;
+  clearSensor();  // drop frames from an earlier (e.g. demo) connection so the status starts from 'offline'
   useSleeve.setState({ conn: 'connecting', source, error: undefined });
   const l = new SleeveLink(source === 'usb' ? new SerialLineSource() : fakeSleeve());
   l.onFrame(pushSensorFrame);
@@ -74,6 +76,7 @@ export async function connectSleeve(source: 'usb' | 'demo'): Promise<void> {
   try {
     await l.connect();
   } catch (e) {
+    console.warn('Sleeve connect failed:', e);
     const cancelled = e instanceof DOMException && e.name === 'NotFoundError';  // user closed the port picker
     useSleeve.setState({ conn: cancelled ? 'off' : 'error', source: null, error: e instanceof Error ? e.message : String(e) });
     return;
@@ -81,6 +84,11 @@ export async function connectSleeve(source: 'usb' | 'demo'): Promise<void> {
   link = l;
   buzz = createBuzzController((motor, pattern) => void l.buzz(motor, pattern));
   useSleeve.setState({ conn: 'live', connectedAt: performance.now() });
+}
+
+/** Lines and valid frames received on the current connection (zeros when not connected). */
+export function sleeveStats(): { lines: number; frames: number } {
+  return link ? { ...link.stats } : { lines: 0, frames: 0 };
 }
 
 /** Turn the motors off and close the connection. */

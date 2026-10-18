@@ -33,6 +33,13 @@ export function pushSensorFrame(frame: SensorFrame): void {
   listeners.forEach((fn) => fn(frame));
 }
 
+/** Forgets the last sleeve frame, so the status reads 'offline' again (the sleeve was disconnected). */
+export function clearSensor(): void {
+  latest = null;
+  rate = 0;
+  windowCount = 0;
+}
+
 /** Subscribes to every pushed sleeve frame; returns the unsubscribe function. */
 export function onSensorFrame(fn: Listener): () => void {
   listeners.add(fn);

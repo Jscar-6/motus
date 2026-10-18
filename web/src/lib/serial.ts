@@ -86,9 +86,14 @@ export class SerialLineSource implements LineSource {
     if (!serial) throw new Error('Web Serial is not available in this browser (use Chrome).');
     this.port = await serial.requestPort({ filters: USB_VENDOR_IDS.map((usbVendorId) => ({ usbVendorId })) });
     await this.port.open({ baudRate: this.baud });
-    // ESP32 boards wire DTR/RTS to their reset (EN) and boot (IO0) pins: with RTS asserted and DTR not, the board is
-    // held in reset and sends nothing, so the app shows the sleeve as "stale". Release both so the firmware runs.
-    await this.port.setSignals({ dataTerminalReady: false, requestToSend: false });
+    try {
+      // ESP32 boards wire DTR/RTS to their reset (EN) and boot (IO0) pins: with RTS asserted and DTR not, the board
+      // is held in reset and sends nothing, so the app shows the sleeve as "stale". Release both so the firmware runs.
+      await this.port.setSignals({ dataTerminalReady: false, requestToSend: false });
+    } catch (e) {
+      await this.stop();  // never leave the port open after a failed start: it would block the next attempt
+      throw e;
+    }
     this.reader = this.port.readable!.pipeThrough(new TextDecoderStream()).getReader();
     void this.readLoop(onLine, onClose);
   }
@@ -105,8 +110,8 @@ export class SerialLineSource implements LineSource {
         buf = lines.pop() ?? '';
         lines.forEach(onLine);
       }
-    } catch {
-      // Unplugged or closed: fall through to onClose.
+    } catch (e) {
+      console.warn('Sleeve read stopped:', e);  // unplugged or closed: fall through to onClose
     }
     onClose();
   }
@@ -133,6 +138,8 @@ export class SerialLineSource implements LineSource {
 
 /** One sleeve connection: parses lines into frames and statuses, and sends commands. */
 export class SleeveLink {
+  /** Raw lines received, and how many of them were valid frames (for diagnosing "no data"). */
+  readonly stats = { lines: 0, frames: 0 };
   private frameFns = new Set<(f: SensorFrame) => void>();
   private statusFns = new Set<(s: SleeveStatus) => void>();
   private closeFns = new Set<() => void>();
@@ -143,7 +150,9 @@ export class SleeveLink {
   async connect(): Promise<void> {
     await this.source.start(
       (line) => {
+        this.stats.lines++;
         const parsed = parseLine(line);
+        if (parsed?.kind === 'frame') this.stats.frames++;
         if (parsed?.kind === 'frame') this.frameFns.forEach((fn) => fn(parsed.frame));
         else if (parsed?.kind === 'status') this.statusFns.forEach((fn) => fn(parsed.status));
       },
