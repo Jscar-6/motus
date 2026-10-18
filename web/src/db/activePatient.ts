@@ -32,8 +32,8 @@ export const useActivePatientStore = create<ActivePatientState>((set) => ({
   },
 }));
 
-/** The active patient row (falls back to the first non-sample patient), plus the full list for a switcher. */
-export function useActivePatient(): { patient: PatientRow | null; patients: PatientRow[]; setPatient: (id: string) => void; configured: boolean } {
+/** The active patient row (falls back to the first non-sample patient) and whether the database is configured. */
+export function useActivePatient(): { patient: PatientRow | null; configured: boolean } {
   const { data, configured } = usePatients();
   const { id, set } = useActivePatientStore();
   const chosen = data.find((p) => p.id === id) ?? data.find((p) => !p.is_sample) ?? data[0] ?? null;
@@ -42,5 +42,5 @@ export function useActivePatient(): { patient: PatientRow | null; patients: Pati
     if (chosen && chosen.id !== id) set(chosen.id);
   }, [chosen, id, set]);
 
-  return { patient: chosen, patients: data, setPatient: set, configured };
+  return { patient: chosen, configured };
 }

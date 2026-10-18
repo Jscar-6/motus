@@ -13,6 +13,25 @@ export interface Live<T> {
 
 type Row = { id: string };
 
+const WARM_MS = 5_000;  // a prefetched load older than this is ignored and loaded again
+const warm = new Map<string, { at: number; promise: Promise<unknown> }>();
+
+/** Start loading the physician overview's tables now (during the landing fade-out) so the page opens with its data. */
+export function prefetchOverview() {
+  if (!supabase) return;
+  for (const [key, load] of [['patients', listPatients], ['recordings', () => listRecordings()]] as const) {
+    const promise = load();
+    promise.catch(() => undefined);
+    warm.set(key, { at: Date.now(), promise });
+  }
+}
+
+/** The prefetched load for `key` while it is fresh, else a new `load()`; Realtime covers any change after it. */
+function warmOr<T>(key: string, load: () => Promise<T[]>): Promise<T[]> {
+  const hit = warm.get(key);
+  return hit && Date.now() - hit.at < WARM_MS ? (hit.promise as Promise<T[]>) : load();
+}
+
 /** Apply one Realtime change to a list of rows. */
 function applyChange<T extends Row>(rows: T[], event: string, next: T | null, old: Partial<T> | null): T[] {
   if (event === 'DELETE') return rows.filter((r) => r.id !== old?.id);
@@ -67,10 +86,10 @@ const byCreated = (a: PatientRow, b: PatientRow) => a.created_at.localeCompare(b
 
 /** All patients, live. */
 export function usePatients(): Live<PatientRow> {
-  return useLiveTable('patients', listPatients, undefined, byCreated);
+  return useLiveTable('patients', () => warmOr('patients', listPatients), undefined, byCreated);
 }
 
 /** Recordings (newest first) for one patient, or everyone when patientId is omitted; live. */
 export function useRecordings(patientId?: string): Live<RecordingRow> {
-  return useLiveTable('recordings', () => listRecordings(patientId), patientId ? `patient_id=eq.${patientId}` : undefined, byStartedDesc);
+  return useLiveTable('recordings', () => (patientId ? listRecordings(patientId) : warmOr('recordings', () => listRecordings())), patientId ? `patient_id=eq.${patientId}` : undefined, byStartedDesc);
 }
