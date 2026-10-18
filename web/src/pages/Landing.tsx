@@ -1,9 +1,10 @@
 // Landing: wordmark, setup steps and one button that asks for the webcam; the lens then grows into the session's video panel,
-// while the physician link fades the whole page out instead.
+// while the physician link fades the whole page out instead (or opens Auth0 sign-in when signed out).
 import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
+import { usePhysicianAuth } from '../auth/usePhysicianAuth';
 import { prefetchOverview } from '../db/hooks';
 import Lens from '../landing/Lens';
 import Button from '../ui/Button';
@@ -45,6 +46,7 @@ export default function Landing() {
   const [message, setMessage] = useState<string>(MESSAGES.blocked);
   const [granted, setGranted] = useState(false);
   const [exit, setExit] = useState<Exit>('morph');
+  const physician = usePhysicianAuth();
   const lensRef = useRef<HTMLDivElement>(null);
   const wordmarkRef = useRef<HTMLDivElement>(null);
   const copy = useMaterialize({ delay: 0.1, y: 12, blur: 6 });
@@ -69,8 +71,12 @@ export default function Landing() {
     navigate(path, { state });
   }
 
-  /** Fade the whole page out while the physician overview's code and data load, so it can slide in complete. */
+  /** Signed out: straight to Auth0 Universal Login. Otherwise fade the page out while the overview's code and data load, so it can slide in complete. */
   function goToPhysician() {
+    if (physician.configured && !physician.loading && !physician.signedIn) {
+      physician.signIn().catch(() => navigate('/physician'));
+      return;
+    }
     import('./Physician').catch(() => undefined);
     prefetchOverview();
     flushSync(() => setExit('fade'));
@@ -122,7 +128,7 @@ export default function Landing() {
             onClick={goToPhysician}
             className="!h-8 gap-1.5 !px-3.5 text-[0.7rem] uppercase tracking-[0.08em]"
           >
-            Physician login
+            {physician.signedIn ? 'Physician portal' : 'Physician login'}
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M7 17 17 7M8 7h9v9" /></svg>
           </Button>
         </motion.div>
