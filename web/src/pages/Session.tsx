@@ -1,5 +1,5 @@
 // Patient view (Figma 1:6): a left column (wordmark, white instruction card, arm) beside a big video panel with a Record control.
-import { useRef, useState, type RefObject } from 'react';
+import { useRef, useState, type ReactNode, type RefObject } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Link, useLocation } from 'react-router-dom';
 import { readFlipOrigin, useFlipFrom } from '../landing/useFlipFrom';
@@ -14,6 +14,7 @@ import Button from '../ui/Button';
 import Wordmark from '../ui/Wordmark';
 import RecordButton from '../recording/RecordButton';
 import { useRecorder } from '../recording/useRecorder';
+import VisionCheck from '../vision/VisionCheck';
 
 const SLIDE = { type: 'spring', bounce: 0, duration: 0.7 } as const;
 const COLUMN = 'lg:grid-cols-[clamp(13rem,17vw,17rem)_1fr]'; // left column: wordmark, instruction card, arm
@@ -62,12 +63,13 @@ function ErrorOverlay() {
   );
 }
 
-/** Video, status overlays and the glass controls inside the panel. */
-function VideoSurface({ videoRef, status, reduced, recorder }: {
+/** Video, status overlays, optional content above them, and the glass controls inside the panel. */
+function VideoSurface({ videoRef, status, reduced, recorder, children }: {
   videoRef: RefObject<HTMLVideoElement>;
   status: 'starting' | 'running' | 'error';
   reduced: boolean | null;
   recorder: ReturnType<typeof useRecorder>;
+  children?: ReactNode;
 }) {
   return (
     <>
@@ -83,6 +85,8 @@ function VideoSurface({ videoRef, status, reduced, recorder }: {
         {status === 'starting' && <StartingOverlay reduced={reduced} />}
         {status === 'error' && <ErrorOverlay />}
       </AnimatePresence>
+
+      {children}
 
       <div className="absolute inset-x-4 top-4 flex items-start justify-between gap-3">
         <div />
@@ -149,7 +153,12 @@ export default function Session() {
         aria-label="Camera"
         className="material relative aspect-[4/3] overflow-hidden sm:aspect-video lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:aspect-auto"
       >
-        <VideoSurface videoRef={videoRef} status={status} reduced={reduced} recorder={recorder} />
+        <VideoSurface videoRef={videoRef} status={status} reduced={reduced} recorder={recorder}>
+          {/* Himmet's vision model (C1–C5), unchanged; the classes only restore browser default looks that Tailwind resets. */}
+          <div className="absolute inset-0 overflow-auto bg-paper text-ink [&_button]:rounded-md [&_button]:border [&_button]:border-ink-3 [&_button]:bg-white [&_button]:px-2 [&_button]:py-0.5 [&_button:disabled]:opacity-40 [&_h1]:mb-2 [&_h1]:text-2xl [&_h1]:font-bold [&_p]:my-2 [&_pre]:text-xs [&_th]:text-left">
+            <VisionCheck />
+          </div>
+        </VideoSurface>
       </motion.section>
 
       <motion.div {...card} className="relative flex min-h-0 flex-col lg:col-start-1 lg:row-start-2">
