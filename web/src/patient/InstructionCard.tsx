@@ -1,4 +1,4 @@
-// The white card that tells the patient what to adjust, in one calm sentence (Figma instruction card).
+// The white card: the session steps as a checklist, then one calm sentence on what to adjust (Figma instruction card).
 import { useEffect, useRef } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import clsx from 'clsx';
@@ -8,6 +8,7 @@ import { useLive, useThrottledSample } from '../live/store';
 import { useTypewriter } from '../physician/patient/useTypewriter';
 import { getCue, type CueId, type Tone } from './cues';
 import { EASE_OUT } from './motion';
+import SessionSteps from './SessionSteps';
 
 const DOT: Record<Tone, string> = { neutral: 'bg-ink-3', ok: 'bg-ok', warn: 'bg-warn', bad: 'bg-bad' };
 const NOTE_CPS = 40;
@@ -85,6 +86,7 @@ export default function InstructionCard({ className }: { className?: string }) {
         />
         <span className="eyebrow !text-ink-2" aria-hidden>{showNote ? 'From your physician' : cue.status}</span>
       </div>
+      <SessionSteps />
       <div aria-live="polite" className="min-h-0 flex-1 overflow-y-auto">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div

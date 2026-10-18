@@ -14,6 +14,8 @@ interface LiveState {
   fps: number;
   near: boolean;             // target choice; drives the lean check (RPSS near-only rule)
   restCaptured: boolean;
+  targetSet: boolean;        // the patient clicked the object on the video (§9.2 C4)
+  reps: number;              // reps finished since the page opened
   buzz: BuzzSensitivity;     // F10 runtime setting; read by S3 when it lands
   flags: FlagEvent[];        // newest first
 }
@@ -25,6 +27,8 @@ export const useLive = create<LiveState>(() => ({
   fps: 0,
   near: true,
   restCaptured: false,
+  targetSet: false,
+  reps: 0,
   buzz: 'medium',
   flags: [],
 }));
