@@ -1,13 +1,15 @@
-// Live webcam with pose tracking. Pages get each PoseFrame (and the video's width/height ratio) via onPose;
+// Live webcam with pose and hand tracking. Pages get each PoseFrame, the video's width/height ratio and the hand
+// point (hand.ts) via onPose;
 // `debug` draws the tracked points.
 import { useEffect, useRef, useState } from 'react';
 import { FORWARD_REACH } from '../lib/config';
 import type { PoseFrame, Side } from '../lib/types';
+import { HandTracker, type HandPoint } from './hand';
 import { PoseTracker, runPoseLoop, startCamera, stopCamera } from './pose';
 
 interface Props {
   side: Side;
-  onPose?: (frame: PoseFrame | null, aspect: number) => void;
+  onPose?: (frame: PoseFrame | null, aspect: number, hand: HandPoint | null) => void;
   debug?: boolean;
 }
 
@@ -64,11 +66,13 @@ export default function CameraView({ side, onPose, debug = false }: Props) {
     let cancelled = false;
     let stream: MediaStream | null = null;
     let tracker: PoseTracker | null = null;
+    let hands: HandTracker | null = null;
     let stopLoop = () => {};
 
     const release = () => {
       stopLoop();
       tracker?.close();
+      hands?.close();
       if (stream) stopCamera(stream);
     };
 
@@ -76,14 +80,16 @@ export default function CameraView({ side, onPose, debug = false }: Props) {
       try {
         stream = await startCamera(video);
         tracker = await PoseTracker.create();
+        // The hand model only sharpens the hand point; without it the pose model's hand points are used.
+        hands = await HandTracker.create().catch((e) => (console.warn('Hand model unavailable:', e), null));
         if (cancelled) return release();
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         const aspect = video.videoWidth / video.videoHeight;
-        stopLoop = runPoseLoop(video, tracker, () => sideRef.current, (frame) => {
-          onPoseRef.current?.(frame, aspect);
+        stopLoop = runPoseLoop(video, tracker, () => sideRef.current, (frame, hand) => {
+          onPoseRef.current?.(frame, aspect, hand);
           if (debugRef.current) drawDebug(canvas, frame);
-        });
+        }, hands);
         setStatus('running');
       } catch (e) {
         if (cancelled) return release();

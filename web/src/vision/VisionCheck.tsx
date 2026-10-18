@@ -3,7 +3,7 @@
 import { FORWARD_REACH } from '../lib/config';
 import type { RestCaptureStatus } from '../lib/features';
 import CameraView from './CameraView';
-import { graspPoint, targetFromClick } from './target';
+import { targetFromClick } from './target';
 import { useVisionModel } from './useVisionModel';
 
 const REJECT_TEXT = { no_person: 'no person in view', hidden: 'a body point is hidden', moving: 'you moved' };
@@ -19,13 +19,13 @@ function captureText(s: RestCaptureStatus | null): string {
 /** Shows the webcam with tracked points, a side toggle, rest-pose capture, live §6.1 features, target touch, reps and rules. */
 export default function VisionCheck() {
   const {
-    side, frame, features, capture, fps, aspect, near, target, touching, inRep, reps, rules,
+    side, frame, hand, features, capture, fps, aspect, near, target, touching, inRep, reps, rules,
     onPose, pickSide, pickNear, requestCapture, setTarget,
   } = useVisionModel();
 
   const n = (v: number | null | undefined, d = 1) => (v == null ? '—' : v.toFixed(d));
   const r = FORWARD_REACH.touchRadius!;
-  const tip = frame ? graspPoint(frame) : null;
+  const tip = hand;
 
   return (
     <div style={{ fontFamily: 'system-ui', padding: 16, maxWidth: 960, margin: '0 auto' }}>
