@@ -152,6 +152,54 @@ export class SerialLineSource implements LineSource {
   }
 }
 
+// firmware/tools/sleeve_bridge.py: reads the USB port with pyserial and serves the lines to the browser. Used first,
+// because Chrome's Web Serial reported "device lost" on every read on our Linux laptop.
+export const BRIDGE_URL = 'http://localhost:8765';
+const BRIDGE_CONNECT_MS = 1500;
+
+/** The sleeve bridge as a LineSource: Server-Sent Events in, POSTed command lines out. */
+export class BridgeLineSource implements LineSource {
+  private events: EventSource | null = null;
+
+  constructor(private readonly url: string = BRIDGE_URL) {}
+
+  /** Connect to the bridge's stream; rejects quickly if the bridge isn't running. */
+  start(onLine: (line: string) => void, onClose: () => void): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const es = new EventSource(`${this.url}/stream`);
+      let opened = false;
+      const timer = setTimeout(() => fail(), BRIDGE_CONNECT_MS);
+      const fail = () => {
+        clearTimeout(timer);
+        es.close();
+        reject(new Error('Sleeve bridge not running (firmware/tools/sleeve_bridge.py)'));
+      };
+      es.onopen = () => {
+        opened = true;
+        clearTimeout(timer);
+        this.events = es;
+        resolve();
+      };
+      es.onmessage = (e) => onLine(e.data);
+      es.onerror = () => {
+        if (!opened) return fail();
+        if (es.readyState === EventSource.CLOSED) onClose();  // otherwise EventSource reconnects by itself
+      };
+    });
+  }
+
+  /** Send one command line through the bridge (text/plain keeps it a simple CORS request). */
+  async write(line: string): Promise<void> {
+    await fetch(`${this.url}/cmd`, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: line }).catch(() => undefined);
+  }
+
+  /** Stop listening (the bridge keeps the USB port open for the next connect). */
+  async stop(): Promise<void> {
+    this.events?.close();
+    this.events = null;
+  }
+}
+
 /** One sleeve connection: parses lines into frames and statuses, and sends commands. */
 export class SleeveLink {
   /** Raw lines received, and how many of them were valid frames (for diagnosing "no data"). */
@@ -199,7 +247,7 @@ export class SleeveLink {
     return this.source.write(`V,${motor},${pattern}`);
   }
 
-  /** `G`: re-zero the gyros with the sleeve flat and still, X arrows aligned. Resolves 'ok' or 'moved'. */
+  /** `G`: re-zero the gyros (sit still 2 s; the sleeve can be worn). Resolves 'ok', 'moved' or 'timeout'. */
   zero(timeoutMs = 4000): Promise<'ok' | 'moved' | 'timeout'> {
     return new Promise((resolve) => {
       const timer = setTimeout(() => done('timeout'), timeoutMs);

@@ -173,7 +173,7 @@ export default function Landing() {
       </div>
 
       <motion.footer {...footer} exit={leave} className="relative text-center text-ink-2">
-        Made by Ehan Shah, Daniel Cao, Himmet Dhaliwal, Jack Scarlet
+        Made by Ehan Shah, Daniel Cao, Himmet Dhaliwal, Jack Scarlett
       </motion.footer>
     </motion.main>
   );
