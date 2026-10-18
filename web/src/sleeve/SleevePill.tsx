@@ -10,7 +10,7 @@ const BOOT_GRACE_MS = 6000;
 // SOURCE: requested by Ehan: time after clicking Zero for the patient to get into the zero position (sitting still,
 // sleeve on) before the 2 s gyro measurement starts.
 export const ZERO_COUNTDOWN_S = 5;
-const BTN = 'pressable h-6 cursor-pointer rounded-full px-3 transition-colors duration-150 [@media(hover:hover)]:hover:bg-white/20';
+const BTN = 'pressable h-8 cursor-pointer rounded-full px-3 transition-colors duration-150 [@media(hover:hover)]:hover:bg-white/20';
 
 /** One-line status text for a connected sleeve. */
 function liveText(s: ReturnType<typeof useSleeve.getState>): { text: string; bad: boolean } {

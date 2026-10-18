@@ -17,7 +17,7 @@ export default function CameraPicker({ pillClass }: { pillClass: string }) {
       <select
         value={chosen?.deviceId ?? ''}
         onChange={(e) => chooseCamera(e.target.value || null)}
-        className="h-6 max-w-[11rem] cursor-pointer truncate rounded-full bg-transparent px-3 text-inherit outline-none"
+        className="h-8 max-w-[11rem] cursor-pointer truncate rounded-full bg-transparent px-3 text-inherit outline-none"
       >
         <option value="" className="text-ink">Default camera</option>
         {devices.map((d, i) => (

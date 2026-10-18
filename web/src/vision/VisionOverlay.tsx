@@ -1,7 +1,7 @@
 // Session camera panel (Figma 1:6): the vision model's webcam filling the panel, with grey glass pills on top:
 // tracked side, rest-pose capture, and a live chip for the measurement changing the most. Clicking the video places
 // the target (near by default).
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import clsx from 'clsx';
 import { METRICS, levelOf, type Metric } from '../doctor/metrics';
@@ -22,7 +22,10 @@ import SleevePill from '../sleeve/SleevePill';
 const CHANGE_WINDOW_MS = 500;
 const HOLD_MS = 800;
 const LIVE_KEYS = ['lean', 'hike', 'rot', 'elbow', 'flex'] as const;
-const PILL = 'inline-flex h-8 items-center gap-1 rounded-full bg-[rgb(110_104_98/0.42)] px-1 font-display text-[0.7rem] uppercase tracking-[0.08em] text-white backdrop-blur-md';
+// SOURCE: requested by Ehan. Display only: the target ring turns green once the hand has stayed on it this long.
+// Rep counting doesn't use it until the §20 proposal for a held touch is accepted.
+const HOLD_TO_COMPLETE_MS = 5000;
+const PILL = 'inline-flex h-10 items-center gap-1 rounded-full bg-[rgb(110_104_98/0.42)] px-1 font-display text-[0.8rem] uppercase tracking-[0.08em] text-white backdrop-blur-md';
 const REJECT = { no_person: 'no one in view', hidden: 'body hidden', moving: 'you moved' };
 
 /** Short pill text for the rest-pose capture state. */
@@ -49,7 +52,7 @@ function Segmented<T extends string>({ label, options, value, onPick }: {
           aria-pressed={o.value === value}
           onClick={() => onPick(o.value)}
           className={clsx(
-            'pressable h-6 cursor-pointer rounded-full px-3 transition-colors duration-150',
+            'pressable h-8 cursor-pointer rounded-full px-3 transition-colors duration-150',
             o.value === value ? 'bg-white/90 text-ink' : 'text-white/85 [@media(hover:hover)]:hover:bg-white/20',
           )}
         >
@@ -142,32 +145,51 @@ function usePublishToLive(v: ReturnType<typeof useVisionModel>): void {
   }, [v.frame, v.features, v.rules, v.aspect]);
 }
 
+/**
+ * True once the hand has touched the target for HOLD_TO_COMPLETE_MS without letting go. Stays true after the hand
+ * leaves, until the next touch starts or the target moves.
+ */
+function useHeldTouch(touching: boolean, target: unknown): boolean {
+  const [held, setHeld] = useState(false);
+  useEffect(() => setHeld(false), [target]);
+  useEffect(() => {
+    if (!touching) return;
+    setHeld(false);
+    const timer = setTimeout(() => setHeld(true), HOLD_TO_COMPLETE_MS);
+    return () => clearTimeout(timer);
+  }, [touching]);
+  return held;
+}
+
 /** Full-panel webcam with the vision model's controls as grey pills; `trailing` sits top right (Record). */
 export default function VisionOverlay({ trailing }: { trailing?: ReactNode }) {
   const v = useVisionModel();
   usePublishToLive(v);
+  const held = useHeldTouch(v.touching, v.target);
   const r = FORWARD_REACH.touchRadius!;
   const tip = v.hand;
 
   return (
     <>
-      {/* The box keeps the video's aspect ratio and fits inside the panel, so the whole frame shows (nothing is cropped)
-          and clicks and overlays stay in video coordinates.
+      {/* The box keeps the video's aspect ratio and covers the panel, so the camera fills it (the edges that don't fit
+          are cropped) and clicks and overlays stay in video coordinates.
           CameraView's own status text is hidden: the Session panel already shows starting and error states. */}
       <div className="absolute inset-0 overflow-hidden [container-type:size] [&_p]:hidden">
         <div
           className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-crosshair"
-          style={{ aspectRatio: v.aspect, width: `min(100cqw, calc(100cqh * ${v.aspect}))` }}
+          style={{ aspectRatio: v.aspect, width: `max(100cqw, calc(100cqh * ${v.aspect}))` }}
           onClick={(e) => v.setTarget(targetFromClick(e.clientX, e.clientY, e.currentTarget.querySelector('video')!, v.near))}
         >
           <CameraView side={v.side} onPose={v.onPose} debug />
           {v.target && (
             <div
-              className="pointer-events-none absolute rounded-full border-[3px] border-sky-400 transition-colors duration-150"
+              className={clsx(
+                'pointer-events-none absolute rounded-full border-[3px] transition-colors duration-150',
+                held ? 'border-ok bg-ok/60' : v.touching ? 'border-sky-400 bg-sky-400/60' : 'border-sky-400 bg-transparent',
+              )}
               style={{
                 left: `${(v.target.point[0] - r / v.aspect) * 100}%`, top: `${(v.target.point[1] - r) * 100}%`,
                 width: `${(2 * r * 100) / v.aspect}%`, height: `${2 * r * 100}%`,
-                background: v.touching ? 'rgb(56 189 248 / 0.6)' : 'transparent',
               }}
             />
           )}

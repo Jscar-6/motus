@@ -96,7 +96,7 @@ export default function RecordButton({ state, elapsedMs, available, reason, onSt
         disabled={disabled}
         aria-label={label}
         title={state === 'idle' && !available ? reason ?? undefined : undefined}
-        className="pressable material inline-flex !h-8 cursor-pointer select-none items-center overflow-hidden px-3.5 font-display text-[0.7rem] uppercase tracking-[0.08em] text-ink backdrop-blur-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:pointer-events-none disabled:opacity-40 [@media(hover:hover)]:hover:bg-white/80"
+        className="pressable material inline-flex !h-10 cursor-pointer select-none items-center overflow-hidden px-3.5 font-display text-[0.8rem] uppercase tracking-[0.08em] text-ink backdrop-blur-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:pointer-events-none disabled:opacity-40 [@media(hover:hover)]:hover:bg-white/80"
       >
         <motion.span layout={reduced ? false : 'position'} transition={SPRING} className="inline-flex items-center">
           <AnimatePresence mode="popLayout" initial={false}>
