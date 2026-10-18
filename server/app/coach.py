@@ -14,7 +14,7 @@ load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 router = APIRouter(prefix="/coach", tags=["coach"])
 
 DEFAULT_MODEL = "gemini-2.5-flash"
-TIMEOUT_MS = 5000
+TIMEOUT_MS = 10000  # the Gemini API rejects deadlines under 10 s
 MAX_CONTEXT_CHARS = 4000
 
 SYSTEM_PROMPT = (
@@ -130,6 +130,13 @@ def _client():
     return genai.Client(api_key=key, http_options=types.HttpOptions(timeout=TIMEOUT_MS))
 
 
+def _no_thinking():
+    """Thinking off: 2.5 models otherwise spend the 200-token output budget thinking and cut the reply short."""
+    from google.genai import types
+
+    return types.ThinkingConfig(thinking_budget=0)
+
+
 def _model() -> str:
     """Model name from GEMINI_MODEL, defaulting to gemini-2.5-flash."""
     return os.getenv("GEMINI_MODEL") or DEFAULT_MODEL
@@ -151,7 +158,7 @@ def gemini_note(context: dict) -> Optional[str]:
         response = client.models.generate_content(
             model=_model(),
             contents=f"Measured summary:\n{_context_json(context)}",
-            config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT, max_output_tokens=200),
+            config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT, max_output_tokens=200, thinking_config=_no_thinking()),
         )
         return (response.text or "").strip() or None
     except Exception:
@@ -174,6 +181,7 @@ def gemini_voice(transcript: str, context: dict) -> Optional[tuple[str, Optional
                 response_mime_type="application/json",
                 response_schema=VOICE_SCHEMA,
                 max_output_tokens=200,
+                thinking_config=_no_thinking(),
             ),
         )
         data = json.loads(response.text or "")
