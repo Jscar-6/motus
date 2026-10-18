@@ -19,7 +19,8 @@ const PATTERN_FOR: Record<Sensitivity, number> = {
   high: PATTERN.on,  // stays on until the flag clears
 };
 
-// SOURCE: hand-set, not data. While a flag stays on, low/medium re-pulse this often as a reminder.
+// SOURCE: hand-set, not data. A motor starts a new buzz at most this often: low/medium re-pulse at this rate while a
+// flag stays on, and a flag that flickers off and back on can't restart the buzz sooner.
 export const BUZZ_REPEAT_MS = 2000;
 
 export interface BuzzController {
@@ -32,7 +33,7 @@ export interface BuzzController {
 /** Create a controller that sends motor commands through `send` (e.g. SleeveLink.buzz). */
 export function createBuzzController(send: (motor: number, pattern: number) => void): BuzzController {
   const motors = [MOTOR.chest, MOTOR.upperArm];
-  const lastPulse = new Map<number, number>();      // motor → time of last pulse; absent = not buzzing
+  const lastStart = new Map<number, number>();      // motor → when its last buzz started; kept after the flag clears
   const continuous = new Set<number>();             // motors left on with PATTERN.on
 
   return {
@@ -42,26 +43,21 @@ export function createBuzzController(send: (motor: number, pattern: number) => v
         const flagged = flags.some((l) => MOTOR_FOR[l] === motor);
         if (!flagged) {
           if (continuous.delete(motor)) send(motor, PATTERN.off);
-          lastPulse.delete(motor);
           continue;
         }
-        if (pattern === PATTERN.on) {
-          if (!continuous.has(motor)) send(motor, PATTERN.on);
-          continuous.add(motor);
-          continue;
-        }
-        if (continuous.delete(motor)) send(motor, PATTERN.off);  // sensitivity lowered while on
-        const last = lastPulse.get(motor);
-        if (last === undefined || now - last >= BUZZ_REPEAT_MS) {
-          send(motor, pattern);
-          lastPulse.set(motor, now);
-        }
+        if (pattern === PATTERN.on && continuous.has(motor)) continue;
+        if (pattern !== PATTERN.on && continuous.delete(motor)) send(motor, PATTERN.off);  // sensitivity lowered while on
+        const last = lastStart.get(motor);
+        if (last !== undefined && now - last < BUZZ_REPEAT_MS) continue;
+        send(motor, pattern);
+        lastStart.set(motor, now);
+        if (pattern === PATTERN.on) continuous.add(motor);
       }
     },
     stop() {
       for (const motor of motors) send(motor, PATTERN.off);
       continuous.clear();
-      lastPulse.clear();
+      lastStart.clear();
     },
   };
 }
