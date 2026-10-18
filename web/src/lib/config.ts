@@ -9,9 +9,10 @@ export const T_LEAN_DEG = 8.3;
 export const T_HIKE_RATIO = 0.047;
 // SOURCE: TRSP healthy frames (H01–H10), Youden-J cutoff of |rotDeg|, clean vs trunk_rotation (sens 0.85, spec 0.85).
 export const T_ROT_DEG = 9.2;
-// SOURCE: TRSP healthy frames (H01–H10), hold that maximises the mean Youden J of the three checks above,
-// replaying the rules.ts timer at 30 fps. Kinect is smoother than the webcam; E4 may lengthen it (hand-tuned).
-export const MIN_FLAG_MS = 67;
+// SOURCE: hand-tuned for the webcam (E4), picked from the D3 hold sweep on TRSP healthy frames (docs/results.md):
+// 300 ms halves clean-frame false alarms vs the J-optimal 67 ms (mean J 0.66 vs 0.70). 67 ms buzzed constantly
+// on live webcam noise. Not yet confirmed by the spot check.
+export const MIN_FLAG_MS = 300;
 // SOURCE: placeholder until E4 (hand-tuned during spot check)
 export const PLACEHOLDER_VIS_MIN = 0.5;
 // SOURCE: placeholder until E4 (hand-tuned during spot check); normalized image units
