@@ -2,6 +2,7 @@
 // Model and WASM are served locally (web/public), so pose tracking needs no internet during the demo.
 import { FilesetResolver, PoseLandmarker, type NormalizedLandmark } from '@mediapipe/tasks-vision';
 import type { Point2, PoseFrame, Side } from '../lib/types';
+import { openCamera } from './camera';
 import { pickHandPoint, type HandPoint, type HandTracker } from './hand';
 
 const WASM_PATH = '/mediapipe-wasm';
@@ -16,12 +17,9 @@ const LANDMARKS: Record<Side, Record<'ear' | 'shoulder' | 'elbow' | 'wrist' | 'h
 /** One detection: the PoseFrame plus the pose model's own hand points (fallback for the hand point, hand.ts). */
 export interface PoseDetection { frame: PoseFrame; poseHand: { index: Point2; pinky: Point2 } }
 
-/** Start the laptop webcam and play it in the given video element. */
+/** Start the chosen webcam (camera.ts) and play it in the given video element. */
 export async function startCamera(video: HTMLVideoElement): Promise<MediaStream> {
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
-    audio: false,
-  });
+  const stream = await openCamera();
   video.srcObject = stream;
   await video.play();
   return stream;

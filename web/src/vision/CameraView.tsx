@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { FORWARD_REACH } from '../lib/config';
 import type { PoseFrame, Side } from '../lib/types';
+import { useCamera } from './camera';
 import { HandTracker, type HandPoint } from './hand';
 import { PoseTracker, runPoseLoop, startCamera, stopCamera } from './pose';
 
@@ -56,6 +57,7 @@ export default function CameraView({ side, onPose, debug = false }: Props) {
   const sideRef = useRef(side);
   const onPoseRef = useRef(onPose);
   const debugRef = useRef(debug);
+  const cameraId = useCamera((s) => s.chosen?.deviceId ?? null);  // a new camera choice restarts the stream
   sideRef.current = side;
   onPoseRef.current = onPose;
   debugRef.current = debug;
@@ -102,7 +104,7 @@ export default function CameraView({ side, onPose, debug = false }: Props) {
       cancelled = true;
       release();
     };
-  }, []);
+  }, [cameraId]);
 
   return (
     <div style={{ position: 'relative', width: '100%' }}>
