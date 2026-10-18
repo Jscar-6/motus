@@ -1,13 +1,21 @@
 // Sleeve control for the Session camera panel: connect (USB or demo), zero, and live status, as one grey pill.
+import { useEffect, useState } from 'react';
 import clsx from 'clsx';
-import { sensorRateHz } from '../arm/armInput';
+import { sensorRateHz, sensorStatus } from '../arm/armInput';
 import { IMU_NAMES, serialSupported } from '../lib/serial';
 import { connectSleeve, disconnectSleeve, useSleeve, zeroSleeve } from './sleeveSession';
 
+// Opening the port restarts the ESP32: about 2.5 s to boot plus its 2 s start-up zero before frames flow again.
+const BOOT_GRACE_MS = 6000;
 const BTN = 'pressable h-6 cursor-pointer rounded-full px-3 transition-colors duration-150 [@media(hover:hover)]:hover:bg-white/20';
 
 /** One-line status text for a connected sleeve. */
 function liveText(s: ReturnType<typeof useSleeve.getState>): { text: string; bad: boolean } {
+  if (sensorStatus() !== 'streaming') {
+    return performance.now() - s.connectedAt < BOOT_GRACE_MS
+      ? { text: 'Starting sensors…', bad: false }
+      : { text: 'No sensor data · replug USB, then reconnect', bad: true };
+  }
   if (s.lostImus.length) return { text: `${s.lostImus.map((n) => IMU_NAMES[n]).join(', ')} lost · check wire`, bad: true };
   if (s.zero === 'moved') return { text: 'Moved while zeroing · lay flat, retry', bad: true };
   if (s.zero !== 'ok') return { text: 'Zero sensors first', bad: false };
@@ -19,6 +27,12 @@ function liveText(s: ReturnType<typeof useSleeve.getState>): { text: string; bad
 /** Grey pill with the sleeve's connection, zero and status; `pillClass` matches the other camera-panel pills. */
 export default function SleevePill({ pillClass }: { pillClass: string }) {
   const s = useSleeve();
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    // Stream health and rate live outside React state, so re-read them twice a second.
+    const id = window.setInterval(() => setTick((n) => n + 1), 500);
+    return () => window.clearInterval(id);
+  }, []);
 
   if (s.conn === 'off' || s.conn === 'error') {
     return (

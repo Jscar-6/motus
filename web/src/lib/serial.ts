@@ -49,6 +49,7 @@ export function parseLine(line: string, now: number = performance.now()): Parsed
 interface WebSerialPort {
   open(options: { baudRate: number }): Promise<void>;
   close(): Promise<void>;
+  setSignals(signals: { dataTerminalReady?: boolean; requestToSend?: boolean }): Promise<void>;
   readable: ReadableStream<Uint8Array> | null;
   writable: WritableStream<Uint8Array> | null;
 }
@@ -85,6 +86,9 @@ export class SerialLineSource implements LineSource {
     if (!serial) throw new Error('Web Serial is not available in this browser (use Chrome).');
     this.port = await serial.requestPort({ filters: USB_VENDOR_IDS.map((usbVendorId) => ({ usbVendorId })) });
     await this.port.open({ baudRate: this.baud });
+    // ESP32 boards wire DTR/RTS to their reset (EN) and boot (IO0) pins: with RTS asserted and DTR not, the board is
+    // held in reset and sends nothing, so the app shows the sleeve as "stale". Release both so the firmware runs.
+    await this.port.setSignals({ dataTerminalReady: false, requestToSend: false });
     this.reader = this.port.readable!.pipeThrough(new TextDecoderStream()).getReader();
     void this.readLoop(onLine, onClose);
   }
