@@ -10,14 +10,14 @@ export interface LineSource {
   stop(): Promise<void>;
 }
 
-export type SleeveStatus = 'ready' | 'pong' | 'zero_ok' | 'zero_moved' | `imu_fail_${1 | 2 | 3}`;
+export type SleeveStatus = 'ready' | 'pong' | 'zero_ok' | 'zero_moved' | `imu_fail_${1 | 2 | 3}` | `imu_ok_${1 | 2 | 3}`;
 
 export type ParsedLine =
   | { kind: 'frame'; frame: SensorFrame; deviceMs: number }
   | { kind: 'status'; status: SleeveStatus }
   | null;
 
-/** IMU numbers in `S,IMU_FAIL,<n>` follow the D-line order. */
+/** IMU numbers in `S,IMU_FAIL,<n>` / `S,IMU_OK,<n>` follow the D-line order. */
 export const IMU_NAMES = { 1: 'upper arm', 2: 'forearm', 3: 'chest' } as const;
 
 /** Motor IDs in `V,<motor>,<pattern>`, as wired (hw-notes/B1-as-wired.md). ID 2 has no motor. */
@@ -41,6 +41,7 @@ export function parseLine(line: string, now: number = performance.now()): Parsed
   if (p[1] === 'ZERO_OK') return { kind: 'status', status: 'zero_ok' };
   if (p[1] === 'ZERO_MOVED') return { kind: 'status', status: 'zero_moved' };
   if (p[1] === 'IMU_FAIL' && ['1', '2', '3'].includes(p[2])) return { kind: 'status', status: `imu_fail_${Number(p[2]) as 1 | 2 | 3}` };
+  if (p[1] === 'IMU_OK' && ['1', '2', '3'].includes(p[2])) return { kind: 'status', status: `imu_ok_${Number(p[2]) as 1 | 2 | 3}` };
   return null;
 }
 

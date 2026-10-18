@@ -11,7 +11,7 @@ pio device monitor      # 921600 baud; type G, P or V,1,1 + Enter to test
 | Line | Meaning |
 |---|---|
 | `D,ms,uw,ux,uy,uz,fw,fx,fy,fz,cw,cx,cy,cz` | 100 Hz quaternions: upper arm, forearm, chest |
-| `S,READY` / `S,IMU_FAIL,<1-3>` / `S,PONG` | status (IMU numbers follow the D order) |
+| `S,READY` / `S,IMU_FAIL,<1-3>` / `S,IMU_OK,<1-3>` / `S,PONG` | status (IMU numbers follow the D order). A lost IMU is retried every second and reports `IMU_OK` when it's back |
 | `S,ZERO_OK` / `S,ZERO_MOVED` | reply to `G` (2 s gyro-bias + shared heading reset) |
 | `V,<motor>,<pattern>[,<percent>]` (in) | motor 1 = chest, 3 = upper arm; pattern 0 off, 1 pulse, 2 double, 3 on; optional strength 0–100 (default 100) |
 

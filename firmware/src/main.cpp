@@ -14,6 +14,8 @@ constexpr uint32_t ZERO_MS = 2000;   // `G`: hold still this long while the gyro
 // SOURCE: hand-set for our clone IMUs (bench test: still-sensor noise ~0.1 deg/s, bias up to ~30 deg/s).
 // A zero window counts as "moved" if any gyro axis spans more than this.
 constexpr float ZERO_MAX_SPAN_DPS = 3.0f;
+constexpr int MAX_MISSES = 10;          // 0.1 s of failed reads marks an IMU as lost
+constexpr uint32_t RETRY_MS = 1000;     // how often a lost IMU is re-initialised (a Dupont wire can wiggle loose)
 
 // MPU6050 registers (same on MPU6500-family clones; ours report WHO_AM_I 0x70).
 constexpr uint8_t REG_CONFIG = 0x1A, REG_GYRO_CONFIG = 0x1B, REG_ACCEL_CONFIG = 0x1C;
@@ -25,6 +27,7 @@ struct Imu {
   TwoWire *bus;
   uint8_t addr;
   bool ok = false;
+  int misses = 0;              // consecutive failed reads
   float bias[3] = {0, 0, 0};  // gyro bias, deg/s
   float a[3] = {0, 0, 1};     // latest accel, g
   float g[3] = {0, 0, 0};     // latest gyro, deg/s (raw, bias not removed)
@@ -164,10 +167,28 @@ void sampleAndSend(float dt) {
       constexpr float D2R = PI / 180.0f;
       s.filt.update((s.g[0] - s.bias[0]) * D2R, (s.g[1] - s.bias[1]) * D2R, (s.g[2] - s.bias[2]) * D2R,
                     s.a[0], s.a[1], s.a[2], dt);
+      s.misses = 0;
+    } else if (s.ok && ++s.misses >= MAX_MISSES) {
+      s.ok = false;
+      Serial.printf("S,IMU_FAIL,%d\n", (int)(&s - imus) + 1);
     }
     len += snprintf(line + len, sizeof line - len, ",%.4f,%.4f,%.4f,%.4f", s.filt.w, s.filt.x, s.filt.y, s.filt.z);
   }
   Serial.println(line);
+}
+
+/** Re-initialise any lost IMU once per RETRY_MS; on success restart its filter level and report S,IMU_OK,<n>. */
+void retryLostImus() {
+  static uint32_t lastTry = 0;
+  if (millis() - lastTry < RETRY_MS) return;
+  lastTry = millis();
+  for (Imu &s : imus) {
+    if (s.ok || !initImu(s) || !readImu(s)) continue;
+    s.filt.resetFromAccel(s.a[0], s.a[1], s.a[2]);
+    s.ok = true;
+    s.misses = 0;
+    Serial.printf("S,IMU_OK,%d\n", (int)(&s - imus) + 1);
+  }
 }
 
 void setup() {
@@ -191,6 +212,7 @@ void loop() {
   static uint32_t last = micros();
   pollSerial();
   updateMotors();
+  retryLostImus();
   uint32_t now = micros();
   if (now - last >= 5 * PERIOD_US) last = now - PERIOD_US;  // after a blocking G, resume without a huge dt step
   if (now - last >= PERIOD_US) {
