@@ -1,9 +1,11 @@
-// The recording playback panel: video, state messages, and glass controls with flag ticks on the scrubber.
+// The recording playback panel: video with the green pose skeleton, state messages, and glass controls with flag
+// ticks on the scrubber.
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 import { publicUrl } from '../../db/supabase';
 import type { RecordingRow, RecordingTimeline } from '../../db/types';
 import { duration, stamp } from '../format';
+import PoseOverlay from './PoseOverlay';
 
 const CHIP = 'inline-flex h-7 items-center rounded-full bg-black/35 px-3 font-display text-[0.7rem] tracking-[0.08em] text-white/90 uppercase backdrop-blur-md';
 const SEEK_STEP_S = 5;
@@ -55,19 +57,30 @@ function Layer({ recording, patientName, configured, onVideo }: SurfaceProps) {
   if (recording.status === 'failed') return <Message>This recording did not finish uploading.</Message>;
   const src = publicUrl(recording.video_path);
   if (!src) return <Message>Sample recording: there is no video to play.</Message>;
+  return <RecordingVideo src={src} recordingId={recording.id} onVideo={onVideo} />;
+}
+
+/** The recording's video with the green pose skeleton drawn over it. */
+function RecordingVideo({ src, recordingId, onVideo }: { src: string; recordingId: string; onVideo: (el: HTMLVideoElement) => void }) {
+  const [el, setEl] = useState<HTMLVideoElement | null>(null);
   return (
-    <video
-      ref={(el) => {
-        if (el) onVideo(el);
-      }}
-      src={src}
-      data-rid={recording.id}
-      playsInline
-      muted
-      preload="auto"
-      onLoadedMetadata={(e) => fixDuration(e.currentTarget)}
-      className="absolute inset-0 size-full object-cover"
-    />
+    <>
+      <video
+        ref={(v) => {
+          if (!v) return;
+          onVideo(v);
+          if (v !== el) setEl(v);
+        }}
+        src={src}
+        data-rid={recordingId}
+        playsInline
+        muted
+        preload="auto"
+        onLoadedMetadata={(e) => fixDuration(e.currentTarget)}
+        className="absolute inset-0 size-full object-cover"
+      />
+      {el && <PoseOverlay video={el} />}
+    </>
   );
 }
 

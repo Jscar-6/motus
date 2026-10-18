@@ -5,7 +5,8 @@ Components of the physician's patient overview (`/physician/:patientId`, F11, Fi
 | File | Role |
 | --- | --- |
 | `OverviewLayout.tsx` | Desktop grid with slide-out cards and the focus view (reuses `doctor/VideoStage`), or a stacked layout below 1024 px |
-| `RecordingPlayer.tsx` | `PlayerSurface` (video, state messages) and `PlayerOverlay` (date chip, glass controls, flag ticks) |
+| `RecordingPlayer.tsx` | `PlayerSurface` (video with the pose skeleton, state messages) and `PlayerOverlay` (date chip, glass controls, flag ticks) |
+| `PoseOverlay.tsx` | Green skeleton over a recording, drawn from the timeline sample `usePlaybackFeed` replays into `live/store`; same look as the patient's live view |
 | `PastExercisesCard.tsx` | Bottom-middle card: thumbnail strip, or the voice transcript while dictating |
 | `RecordingStrip.tsx`, `HScrollbar.tsx` | Newest-first tiles and a custom scrollbar shown only when they overflow |
 | `TranscriptPanel.tsx` | Live transcript, editable box, Gemini reply typed out, check marks |
