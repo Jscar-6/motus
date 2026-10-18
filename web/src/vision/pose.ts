@@ -2,15 +2,19 @@
 // Model and WASM are served locally (web/public), so pose tracking needs no internet during the demo.
 import { FilesetResolver, PoseLandmarker, type NormalizedLandmark } from '@mediapipe/tasks-vision';
 import type { Point2, PoseFrame, Side } from '../lib/types';
+import { pickHandPoint, type HandPoint, type HandTracker } from './hand';
 
 const WASM_PATH = '/mediapipe-wasm';
 const MODEL_PATH = '/models/pose_landmarker_lite.task';
 
 // BlazePose landmark indices from the MediaPipe pose model card. left/right is the person's own side.
-const LANDMARKS: Record<Side, Record<'ear' | 'shoulder' | 'elbow' | 'wrist' | 'hip', number>> = {
-  left: { ear: 7, shoulder: 11, elbow: 13, wrist: 15, hip: 23 },
-  right: { ear: 8, shoulder: 12, elbow: 14, wrist: 16, hip: 24 },
+const LANDMARKS: Record<Side, Record<'ear' | 'shoulder' | 'elbow' | 'wrist' | 'hip' | 'pinky' | 'index', number>> = {
+  left: { ear: 7, shoulder: 11, elbow: 13, wrist: 15, hip: 23, pinky: 17, index: 19 },
+  right: { ear: 8, shoulder: 12, elbow: 14, wrist: 16, hip: 24, pinky: 18, index: 20 },
 };
+
+/** One detection: the PoseFrame plus the pose model's own hand points (fallback for the hand point, hand.ts). */
+export interface PoseDetection { frame: PoseFrame; poseHand: { index: Point2; pinky: Point2 } }
 
 /** Start the laptop webcam and play it in the given video element. */
 export async function startCamera(video: HTMLVideoElement): Promise<MediaStream> {
@@ -54,18 +58,21 @@ export class PoseTracker {
   }
 
   /** Run pose detection on the current video frame; null when no person is found. */
-  detect(video: HTMLVideoElement, side: Side, t: number): PoseFrame | null {
+  detect(video: HTMLVideoElement, side: Side, t: number): PoseDetection | null {
     const pose = this.landmarker.detectForVideo(video, t).landmarks[0];
     if (!pose) return null;
     const idx = LANDMARKS[side];
     return {
-      t,
-      side,
-      ear: toPoint(pose[idx.ear]),
-      shoulder: toPoint(pose[idx.shoulder]),
-      elbow: toPoint(pose[idx.elbow]),
-      wrist: toPoint(pose[idx.wrist]),
-      hip: toPoint(pose[idx.hip]),
+      frame: {
+        t,
+        side,
+        ear: toPoint(pose[idx.ear]),
+        shoulder: toPoint(pose[idx.shoulder]),
+        elbow: toPoint(pose[idx.elbow]),
+        wrist: toPoint(pose[idx.wrist]),
+        hip: toPoint(pose[idx.hip]),
+      },
+      poseHand: { index: toPoint(pose[idx.index]), pinky: toPoint(pose[idx.pinky]) },
     };
   }
 
@@ -124,20 +131,49 @@ class PoseSmoother {
   }
 }
 
-/** Run detection on every new video frame (smoothed) until the returned stop function is called. */
+/** Smooths the hand point with the same One Euro settings as the joints; restarts when the hand is lost. */
+class HandSmoother {
+  private fx = new OneEuro();
+  private fy = new OneEuro();
+  private lastT: number | null = null;
+
+  /** Smoothed copy of the hand point at time t (ms). */
+  push(h: HandPoint | null, t: number): HandPoint | null {
+    if (!h) {
+      [this.fx, this.fy, this.lastT] = [new OneEuro(), new OneEuro(), null];
+      return null;
+    }
+    const dt = this.lastT === null ? 0 : (t - this.lastT) / 1000;
+    this.lastT = t;
+    return { ...h, x: this.fx.filter(h.x, dt), y: this.fy.filter(h.y, dt) };
+  }
+}
+
+/**
+ * Run detection on every new video frame (smoothed) until the returned stop function is called. With a hand
+ * tracker, each frame also gets a hand point (hand.ts); without one, the hand point uses the pose model only.
+ */
 export function runPoseLoop(
   video: HTMLVideoElement,
   tracker: PoseTracker,
   getSide: () => Side,
-  onFrame: (frame: PoseFrame | null) => void,
+  onFrame: (frame: PoseFrame | null, hand: HandPoint | null) => void,
+  hands: HandTracker | null = null,
 ): () => void {
   let rafId = 0;
   let lastVideoTime = -1;
   const smoother = new PoseSmoother();
+  const handSmoother = new HandSmoother();
   const tick = () => {
     if (video.readyState >= 2 && video.currentTime !== lastVideoTime) {
       lastVideoTime = video.currentTime;
-      onFrame(smoother.push(tracker.detect(video, getSide(), performance.now())));
+      const t = performance.now();
+      const det = tracker.detect(video, getSide(), t);
+      const frame = smoother.push(det?.frame ?? null);
+      const palms = frame && hands ? hands.detect(video, t) : [];
+      const aspect = video.videoWidth / video.videoHeight;
+      const hand = frame && det ? pickHandPoint(frame, palms, det.poseHand, aspect) : null;
+      onFrame(frame, handSmoother.push(hand, t));
     }
     rafId = requestAnimationFrame(tick);
   };
