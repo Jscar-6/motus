@@ -47,7 +47,7 @@ export function parseLine(line: string, now: number = performance.now()): Parsed
 
 // Minimal Web Serial types: the API is Chrome-only and not in TypeScript's DOM lib.
 interface WebSerialPort {
-  open(options: { baudRate: number }): Promise<void>;
+  open(options: { baudRate: number; bufferSize?: number }): Promise<void>;
   close(): Promise<void>;
   setSignals(signals: { dataTerminalReady?: boolean; requestToSend?: boolean }): Promise<void>;
   readable: ReadableStream<Uint8Array> | null;
@@ -71,11 +71,15 @@ export function serialSupported(): boolean {
 const USB_VENDOR_IDS = [0x10c4, 0x1a86];
 // PLAN.md §16: 921600 baud; 115200 is the fallback if lines get corrupted.
 export const DEFAULT_BAUD = 921600;
+// Chrome's default receive buffer is 255 bytes, about 24 ms of sleeve data: any longer main-thread stall (MediaPipe
+// runs every camera frame) overflows it and errors the stream. 64 KB holds about 6 s.
+const RX_BUFFER_BYTES = 1 << 16;
 
 /** USB serial port as a LineSource. Must be created from a click handler (Chrome asks the user to pick the port). */
 export class SerialLineSource implements LineSource {
   private port: WebSerialPort | null = null;
-  private reader: ReadableStreamDefaultReader<string> | null = null;
+  private reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+  private stopping = false;
   private readonly encoder = new TextEncoder();
 
   constructor(private readonly baud: number = DEFAULT_BAUD) {}
@@ -85,7 +89,8 @@ export class SerialLineSource implements LineSource {
     const serial = webSerial();
     if (!serial) throw new Error('Web Serial is not available in this browser (use Chrome).');
     this.port = await serial.requestPort({ filters: USB_VENDOR_IDS.map((usbVendorId) => ({ usbVendorId })) });
-    await this.port.open({ baudRate: this.baud });
+    this.stopping = false;
+    await this.port.open({ baudRate: this.baud, bufferSize: RX_BUFFER_BYTES });
     try {
       // ESP32 boards wire DTR/RTS to their reset (EN) and boot (IO0) pins: with RTS asserted and DTR not, the board
       // is held in reset and sends nothing, so the app shows the sleeve as "stale". Release both so the firmware runs.
@@ -94,24 +99,34 @@ export class SerialLineSource implements LineSource {
       await this.stop();  // never leave the port open after a failed start: it would block the next attempt
       throw e;
     }
-    this.reader = this.port.readable!.pipeThrough(new TextDecoderStream()).getReader();
     void this.readLoop(onLine, onClose);
   }
 
-  /** Split the incoming text into lines and hand each one over. */
+  /**
+   * Split the incoming bytes into lines and hand each one over. Non-fatal errors (buffer overrun, framing, break)
+   * leave a fresh `port.readable`, so reading resumes; it ends only when the port is closed or unplugged.
+   */
   private async readLoop(onLine: (line: string) => void, onClose: () => void): Promise<void> {
+    const decoder = new TextDecoder();
     let buf = '';
-    try {
-      for (;;) {
-        const { value, done } = await this.reader!.read();
-        if (done) break;
-        buf += value;
-        const lines = buf.split('\n');
-        buf = lines.pop() ?? '';
-        lines.forEach(onLine);
+    while (this.port?.readable && !this.stopping) {
+      this.reader = this.port.readable.getReader();
+      try {
+        for (;;) {
+          const { value, done } = await this.reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split('\n');
+          buf = lines.pop() ?? '';
+          lines.forEach(onLine);
+        }
+      } catch (e) {
+        if (!this.stopping) console.warn('Sleeve read error, resuming:', e);
+        buf = '';  // the partial line before the error is lost
+      } finally {
+        this.reader.releaseLock();
+        this.reader = null;
       }
-    } catch (e) {
-      console.warn('Sleeve read stopped:', e);  // unplugged or closed: fall through to onClose
     }
     onClose();
   }
@@ -129,6 +144,7 @@ export class SerialLineSource implements LineSource {
 
   /** Stop reading and close the port. */
   async stop(): Promise<void> {
+    this.stopping = true;
     await this.reader?.cancel().catch(() => undefined);
     await this.port?.close().catch(() => undefined);
     this.reader = null;
