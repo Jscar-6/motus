@@ -14,6 +14,7 @@ import { EASE_OUT } from '../patient/motion';
 import CameraView from './CameraView';
 import { graspPoint, targetFromClick } from './target';
 import { useVisionModel } from './useVisionModel';
+import SleevePill from '../sleeve/SleevePill';
 
 // UI timing for the live chip (display only, not a detection threshold): change is measured over this window,
 // and a newly shown measurement stays at least HOLD_MS so the chip doesn't flicker between two.
@@ -196,6 +197,7 @@ export default function VisionOverlay({ trailing }: { trailing?: ReactNode }) {
             <span className="relative whitespace-nowrap">{restLabel(v.capture)}</span>
           </button>
           <LiveChip features={v.features} rules={v.rules} />
+          <SleevePill pillClass={PILL} />
         </div>
         {trailing && <div className="pointer-events-auto shrink-0">{trailing}</div>}
       </div>

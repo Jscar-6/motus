@@ -11,13 +11,13 @@ Daniel's 3D arm model (F7): a stippled "PUT ARM IN VIEW" that morphs into a dott
 | `PoseFusion.ts` | Blends sleeve IMUs with camera angles into an `ArmPose` since calibration |
 | `VisionFollow.ts` | Smoothed side-view upper arm and forearm angles from the camera, so the arm copies the video with no calibration |
 | `armInput.ts` | `pushSensorFrame`, sensor status, `toThreeQuat`, and the 2D camera angle estimate |
-| `simSensor.ts` | `STUB(A3)`: simulated 50 Hz sleeve frames |
+| `simSensor.ts` | Demo sleeve: connects the A3 fake sleeve through `sleeve/sleeveSession` |
 
 ## How live data plugs in
 
-- Sleeve: S1's serial reader should call `pushSensorFrame(frame)` for each `D,` line (`STUB(S1)`). Status goes `offline`, `streaming`, `stale` (after `staleAfterMs`).
+- Sleeve: `sleeve/sleeveSession` calls `pushSensorFrame(frame)` for each `D,` line. Status goes `offline`, `streaming`, `stale` (after `staleAfterMs`).
 - Camera: nothing to wire. The viewer reads `useLive.getState().latest.pose` and `.aspect`, which works on both pages and never opens a second webcam. The moment the arm is visible, the words morph into the arm, which then copies the video's side view (`ArmRig.followImage`): same image-plane angles, turned ~17° toward the viewer, mirrored for a left-side view. The view re-centers and zooms to keep the whole arm in frame. When the hand leaves the video frame for half a second, the arm morphs back into the words.
-- Sleeve-to-body mapping is `remapSensorQuat` in `armInput.ts` (`STUB(S2)`), currently identity.
+- Sleeve-to-body mapping: with a sleeve rest pose, `PoseFusion` uses `sleeveBodyRotations()` (S2, `lib/orientation.ts`). Without one (e.g. replay), it falls back to rotation since its own calibration, through `remapSensorQuat` (identity).
 - The sleeve only drives the arm after `setDrive(true)` and a `calibrate()` (rest pose for IMUs and camera angles); otherwise the camera drives it.
 
 ## Window API
@@ -26,6 +26,5 @@ Daniel's 3D arm model (F7): a stippled "PUT ARM IN VIEW" that morphs into a dott
 
 ## Open TODOs
 
-- Implement `remapSensorQuat` once the IMU mounting is known (S2).
 - Morph to the arm automatically when the sleeve starts streaming.
 - Validate the drive mapping (axes and signs) against the real sleeve and camera, then consider turning drive on by default.
