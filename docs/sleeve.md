@@ -20,7 +20,7 @@ A sensor strapped to the arm doesn't know which of its axes runs along the bone.
 
 | Step | Pose | What it fixes |
 |---|---|---|
-| `G`: Zero sensors (§9.2 C1) | All three sensors **flat on the table, printed X arrows pointing the same way**, still for 2 s | Gyro bias, and **one shared heading** for all three filters, so their directions can be compared |
+| `G`: Zero sensors (§9.2 C1) | **Worn, sitting still** for 2 s (breathing is fine) | Each gyro's bias. Headings are never shared between sensors (the sleeve is sewn in), so no feature compares them |
 | Rest capture (§9.2 C3) | Sitting upright, arm hanging straight down | Each segment's long axis = straight down (arm) or up (trunk) in that sensor's frame, read from gravity. The chest sensor's face gives "forward". |
 
 Then, every frame:
@@ -31,7 +31,7 @@ Then, every frame:
 |---|---|---|
 | `leanDeg` | Trunk axis tilt toward the patient's forward direction | No dependence on the laptop being level or the 2D camera angle |
 | `rotDeg` | Change in the chest's forward heading about vertical | The side camera can't see trunk rotation at all |
-| `elbowDeg` | Angle between the upper-arm and forearm directions, in 3D | Works when the arm moves out of the camera's plane or the elbow is hidden |
+| `elbowDeg` | 180° − difference between the upper arm's and forearm's elevation from vertical (side-view plane, like the camera and TRSP) | Works when the elbow is hidden from the camera; no heading alignment needed |
 
 Shoulder hike, shoulder flexion and visibility stay with the camera (PLAN.md §6.1).
 
@@ -44,7 +44,6 @@ Shoulder hike, shoulder flexion and visibility stay with the camera (PLAN.md §6
   - Keep the strap snug, so breathing doesn't shift it.
 - **Arm sensors:** any rotation around the limb is fine, because rest capture reads each bone's direction from gravity. They must not slip; re-capture rest after any adjustment. Never mount on a joint (§12).
 - **Rest capture quality sets the zero:** the elbow must be truly straight and the trunk upright. A 15° bend at capture puts every elbow reading about 15° off.
-- **Before `G`:** lay the sleeve and chest strap flat with all X arrows parallel.
 
 ## How accurate is it?
 - **Measured on our hardware** (sensors still on a table, after `G`, 16 s): lean noise ±0.3°, elbow ±0.6°, rotation drift about 0.06° (roughly 0.2°/min).
@@ -65,6 +64,6 @@ Shoulder hike, shoulder flexion and visibility stay with the camera (PLAN.md §6
 
 Session order:
 1. Connect (the board restarts when the port opens).
-2. Zero, with the sleeve flat and the X arrows aligned.
+2. Zero: sit still for 2 s with the sleeve on.
 3. Put the sleeve on.
 4. Capture rest pose.

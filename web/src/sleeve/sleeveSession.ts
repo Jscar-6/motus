@@ -123,7 +123,7 @@ export async function disconnectSleeve(): Promise<void> {
   await l.disconnect();
 }
 
-/** `G` with the sleeve flat and still, X arrows aligned (docs/sleeve.md). Clears the rest pose. */
+/** `G`: sit still 2 s, sleeve on is fine (docs/sleeve.md). Clears the rest pose. */
 export async function zeroSleeve(): Promise<void> {
   if (!link) return;
   useSleeve.setState({ conn: 'zeroing' });
