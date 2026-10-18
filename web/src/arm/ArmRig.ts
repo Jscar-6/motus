@@ -45,10 +45,16 @@ type SphereOpts = Pick<Sphere, 'r'> & Partial<Pick<Sphere, 'sy' | 'sz' | 'center
 // x is shifted from the reference (-3.45) so the whole arm, shoulder to fingertips, is centered on the origin.
 const ROOT_POSITION: Vec3 = [-3.65, -0.35, 0];
 const ROOT_REST_EULER: Vec3 = [0, -0.3, 0.06];
+// Hand-tuned: when the camera drives the arm, the shoulder sits high and back so a hanging arm and a forward reach both fit the view.
+const FOLLOW_ROOT_POSITION: Vec3 = [-3.2, 3.1, 0];
+const FOLLOW_YAW = -0.3;                         // hand-tuned: turns the side view ~17° toward the viewer so the hand stays readable
+const Y_AXIS = new THREE.Vector3(0, 1, 0);
+const Z_AXIS = new THREE.Vector3(0, 0, 1);
 const FINGER_GAIN = [1.2, 1.4, 0.9];
 const THUMB_GAIN = [0.3, 0.6, 0.7];
 
 export class ArmRig {
+  readonly mount = new THREE.Object3D();         // parent of root; scale.x = -1 mirrors the arm for a left-side view
   readonly root = new THREE.Object3D();
   readonly bones: THREE.Object3D[] = [];
   readonly byName: Record<string, THREE.Object3D> = {};
@@ -62,6 +68,7 @@ export class ArmRig {
 
   /** Builds the bone hierarchy and records every bone's rest pose. */
   constructor() {
+    this.mount.add(this.root);
     this.root.position.set(...ROOT_POSITION);
     this.root.rotation.set(...ROOT_REST_EULER);
     this.rootRest = this.root.rotation.clone();
@@ -71,7 +78,7 @@ export class ArmRig {
       this.restQ.push(b.quaternion.clone());
       this.restE.push(b.rotation.clone());
     }
-    this.root.updateMatrixWorld(true);
+    this.mount.updateMatrixWorld(true);
   }
 
   /** Adds a bone under `parent` and registers it. */
@@ -189,13 +196,14 @@ export class ArmRig {
 
   /** Copies current bone world matrices into the shader uniform array. */
   syncTo(mats: THREE.Matrix4[]): void {
-    this.root.updateMatrixWorld(true);
+    this.mount.updateMatrixWorld(true);
     this.bones.forEach((b, i) => mats[i].copy(b.matrixWorld));
   }
 
   /** Returns every bone and the root to the rest pose. */
   resetPose(): void {
     this.bones.forEach((b, i) => b.quaternion.copy(this.restQ[i]));
+    this.root.position.set(...ROOT_POSITION);
     this.root.rotation.copy(this.rootRest);
   }
 
@@ -233,6 +241,20 @@ export class ArmRig {
     const fore = this.byName.forearm;
     upper.quaternion.copy(this.restQ[this.bones.indexOf(upper)]).multiply(this.tmp.copy(C).invert().multiply(U));
     fore.quaternion.copy(this.restQ[this.bones.indexOf(fore)]).multiply(this.tmp.copy(U).invert().multiply(F));
+    for (const name of Object.keys(this.fingers)) this.setCurl(name, armConfig.relaxedCurl);
+  }
+
+  /**
+   * Poses the arm straight from the video's side-view angles (radians, counterclockwise, forward = +x), so it matches
+   * the arm on screen with no calibration; `mirrored` flips it to face left, as a left-side video does.
+   */
+  followImage(upperAngle: number, foreAngle: number, mirrored: boolean): void {
+    this.resetPose();
+    this.mount.scale.x = mirrored ? -1 : 1;
+    this.root.position.set(...FOLLOW_ROOT_POSITION);
+    this.root.quaternion.setFromAxisAngle(Y_AXIS, FOLLOW_YAW).multiply(this.tmp.setFromAxisAngle(Z_AXIS, upperAngle));
+    this.byName.upperArm.quaternion.identity();
+    this.byName.forearm.quaternion.setFromAxisAngle(Z_AXIS, foreAngle - upperAngle);
     for (const name of Object.keys(this.fingers)) this.setCurl(name, armConfig.relaxedCurl);
   }
 }

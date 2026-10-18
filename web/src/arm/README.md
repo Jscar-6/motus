@@ -9,15 +9,16 @@ Daniel's 3D arm model (F7): a stippled "PLEASE PUT SLEEVE ON" that morphs into a
 | `particles.ts` | Dot geometry and the morph shaders (GPU bone skinning) |
 | `textSampler.ts` | Stipples the message into dots using the Tanker display font |
 | `PoseFusion.ts` | Blends sleeve IMUs with camera angles into an `ArmPose` since calibration |
+| `VisionFollow.ts` | Smoothed side-view upper arm and forearm angles from the camera, so the arm copies the video with no calibration |
 | `armInput.ts` | `pushSensorFrame`, sensor status, `toThreeQuat`, and the 2D camera angle estimate |
 | `simSensor.ts` | `STUB(A3)`: simulated 50 Hz sleeve frames |
 
 ## How live data plugs in
 
 - Sleeve: S1's serial reader should call `pushSensorFrame(frame)` for each `D,` line (`STUB(S1)`). Status goes `offline`, `streaming`, `stale` (after `staleAfterMs`).
-- Camera: nothing to wire. The viewer reads `useLive.getState().latest.pose` and `.aspect`, which works on both pages and never opens a second webcam.
+- Camera: nothing to wire. The viewer reads `useLive.getState().latest.pose` and `.aspect`, which works on both pages and never opens a second webcam. The moment the arm is visible, the words morph into the arm, which then copies the video's side view (`ArmRig.followImage`): same image-plane angles, turned ~17° toward the viewer, mirrored for a left-side view. It holds the last pose when the arm drops out of view.
 - Sleeve-to-body mapping is `remapSensorQuat` in `armInput.ts` (`STUB(S2)`), currently identity.
-- The arm only follows live data after `setDrive(true)` and a `calibrate()` (rest pose for IMUs and camera angles). Camera-only works without the sleeve.
+- The sleeve only drives the arm after `setDrive(true)` and a `calibrate()` (rest pose for IMUs and camera angles); otherwise the camera drives it.
 
 ## Window API
 

@@ -1,5 +1,6 @@
 // The dotted 3D arm (F7): stippled "PLEASE PUT SLEEVE ON" that morphs into a bone-rigged arm. Fills its parent; drop it inside ArmSlot.
-// Camera-first: it reads the pose from the live store and never opens a webcam. Driving the arm from live data is off until validated.
+// Camera-first: it reads the pose from the live store and never opens a webcam. The moment the camera sees the arm, the
+// words morph into the arm, which then copies the video's side view. Sleeve driving stays off until validated.
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -12,6 +13,7 @@ import { createArmPoints } from './particles';
 import { PoseFusion } from './PoseFusion';
 import { startSimSensor } from './simSensor';
 import { sampleText } from './textSampler';
+import { VisionFollow } from './VisionFollow';
 
 type Mode = 'arm' | 'text';
 
@@ -44,7 +46,7 @@ const STATUS_LABEL: Record<SensorStatus, string> = {
 };
 
 const ARM_WIDTH = 7.6;
-const ARM_HEIGHT = 2;
+const ARM_HEIGHT = 8;                            // room for the camera-driven arm from hanging down to reaching forward
 const FIT_MARGIN = 1.12;
 const TEXT_ASPECT = 640 / 1400;
 const HOME_RATE = 3;
@@ -96,7 +98,7 @@ function homeDistance(fovDeg: number, aspect: number): number {
   return (Math.max(needW / (2 * tanHalf * aspect), needH / (2 * tanHalf)) * FIT_MARGIN);
 }
 
-/** Fills its parent with the morphing dot arm, a mode toggle, and the sleeve status line; `replay` morphs straight to the arm and follows the pose in the live store (physician playback). */
+/** Fills its parent with the morphing dot arm, a mode toggle, and the sleeve status line; the arm follows the pose in the live store (live camera, or physician playback with `replay`, which morphs straight to the arm). */
 export default function ArmViewer({ replay = false }: { replay?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const controllerRef = useRef<Controller | null>(null);
@@ -135,7 +137,8 @@ export default function ArmViewer({ replay = false }: { replay?: boolean }) {
 
     const rig = new ArmRig();
     const fusion = new PoseFusion();
-    const state = { target: 0, progress: 0, drive: false, calibrated: false };
+    const follow = new VisionFollow();
+    const state = { target: 0, progress: 0, drive: false, autoMorphed: false };
     let armPoints: ReturnType<typeof createArmPoints> | null = null;
     let disposed = false;
     let raf = 0;
@@ -189,12 +192,14 @@ export default function ArmViewer({ replay = false }: { replay?: boolean }) {
       armPoints.uniforms.uTime.value = elapsed;
 
       const latest = useLive.getState().latest;
-      if (replay) {
-        if (!latest) state.calibrated = false;
-        else if (!state.calibrated) state.calibrated = fusion.calibrate();
-      }
       const pose = fusion.update(dt, latest?.pose ?? null, latest?.aspect ?? 1);
-      if (state.drive && pose) rig.applyPose(pose);
+      const seen = follow.update(dt, latest?.pose ?? null, latest?.aspect ?? 1);
+      if (seen && !state.autoMorphed) {
+        state.autoMorphed = true;
+        controller.morphTo('arm');
+      }
+      if (state.drive && pose && sensorStatus() === 'streaming') rig.applyPose(pose);
+      else if (follow.ready) rig.followImage(follow.upper, follow.fore, follow.mirrored);
       else rig.idle(elapsed, amplitude);
       rig.syncTo(armPoints.uniforms.uBones.value);
 
@@ -237,7 +242,7 @@ export default function ArmViewer({ replay = false }: { replay?: boolean }) {
       armPoints = built;
       if (replay) {
         controller.morphTo('arm');
-        state.drive = true;
+        state.autoMorphed = true;
       }
       resize();
       syncLoop();
