@@ -10,6 +10,7 @@
     "postinstall": "node -e \"require('fs').cpSync('node_modules/@mediapipe/tasks-vision/wasm','public/mediapipe-wasm',{recursive:true})\""
   },
   "dependencies": {
+    "@auth0/auth0-react": "2.28.2",
     "@mediapipe/tasks-vision": "1.0.1",
     "@supabase/supabase-js": "2.117.2",
     "@tailwindcss/vite": "4.3.3",

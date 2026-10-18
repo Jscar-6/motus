@@ -2,6 +2,8 @@
 import { lazy, Suspense } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import PhysicianAuthProvider from './auth/PhysicianAuthProvider';
+import RequirePhysician from './auth/RequirePhysician';
 import Landing from './pages/Landing';
 import Results from './pages/Results';
 import Session from './pages/Session';
@@ -29,8 +31,8 @@ function AnimatedRoutes() {
             </Suspense>
           }
         />
-        <Route path="/physician" element={<Suspense fallback={null}><Physician /></Suspense>} />
-        <Route path="/physician/:patientId" element={<Suspense fallback={null}><PatientOverview /></Suspense>} />
+        <Route path="/physician" element={<RequirePhysician><Suspense fallback={null}><Physician /></Suspense></RequirePhysician>} />
+        <Route path="/physician/:patientId" element={<RequirePhysician><Suspense fallback={null}><PatientOverview /></Suspense></RequirePhysician>} />
         <Route path="/setup" element={<Setup />} />
         <Route path="/results" element={<Results />} />
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -39,11 +41,13 @@ function AnimatedRoutes() {
   );
 }
 
-/** Root component. */
+/** Root component; Auth0 sits inside the router so a finished login can navigate back to the page it came from. */
 export default function App() {
   return (
     <BrowserRouter>
-      <AnimatedRoutes />
+      <PhysicianAuthProvider>
+        <AnimatedRoutes />
+      </PhysicianAuthProvider>
     </BrowserRouter>
   );
 }
