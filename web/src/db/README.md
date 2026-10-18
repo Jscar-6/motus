@@ -9,3 +9,4 @@ Supabase access for F11 (schema in `/supabase`). `supabase.ts` is null without k
 | `api.ts` | list, create and update rows; upload files; fetch a timeline |
 | `hooks.ts` | `usePatients`, `useRecordings`: load once, then stay current via Realtime |
 | `activePatient.ts` | which patient this device records for (remembered per device) |
+| `physicianNotes.ts` | `sendPhysicianNote`, `usePhysicianNote`: the physician's confirmed voice instruction and Gemini's reply, sent live to one patient's screen over Realtime broadcast (not stored) |

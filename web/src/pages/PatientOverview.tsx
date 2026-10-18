@@ -28,7 +28,7 @@ export default function PatientOverview() {
   const { selected, select, newIds } = useSelection(recordings.data);
   const timeline = useTimeline(selected);
   const note = useRecordingNote(selected);
-  const voice = useVoiceNote();
+  const voice = useVoiceNote(patientId);
   const [video, setVideo] = useState<HTMLVideoElement | null>(null);
   const desktop = useMedia('(min-width: 1024px)');
   const [focusRequested, setFocus] = useState(false);
