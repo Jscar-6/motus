@@ -247,7 +247,7 @@ export class SleeveLink {
     return this.source.write(`V,${motor},${pattern}`);
   }
 
-  /** `G`: re-zero the gyros with the sleeve flat and still, X arrows aligned. Resolves 'ok' or 'moved'. */
+  /** `G`: re-zero the gyros (sit still 2 s; the sleeve can be worn). Resolves 'ok', 'moved' or 'timeout'. */
   zero(timeoutMs = 4000): Promise<'ok' | 'moved' | 'timeout'> {
     return new Promise((resolve) => {
       const timer = setTimeout(() => done('timeout'), timeoutMs);

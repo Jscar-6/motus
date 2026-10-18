@@ -9,6 +9,6 @@ Jack's sleeve integration (S1–S3). `sleeveSession.ts` holds the one shared con
 
 Session order with the sleeve:
 1. **Connect sleeve:** the board restarts once, when the bridge starts.
-2. **Zero:** lay the sleeve flat with the X arrows aligned.
+2. **Zero:** sit still for 2 s (the sleeve stays on).
 3. Put the sleeve on.
 4. **Capture rest pose:** the camera and sleeve rest are captured together.
