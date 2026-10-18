@@ -854,3 +854,8 @@ truereach/
   - **Mounting:** the chest sensor sits component-side out, high on the chest, on the side opposite the reaching arm (docs/sleeve.md).
   - **Hardware facts:** our IMUs are MPU6500-compatible clones (WHO_AM_I 0x70), so the firmware uses direct register access instead of Adafruit_MPU6050; the upload baud is 115200.
   · tasks affected: B2, B3, S1, S3, §9.2 C1, §16.
+- [ACCEPTED by Daniel] Daniel · **Auth0 login for the physician portal (Level 1)**, owner Daniel. Tasks affected: F11 (routes, landing Physician login, physician pages), §1.1 tech stack. No change to `types.ts`, `config.ts`, rules, features, the patient session or the server.
+  - **What:** `/physician` and `/physician/:patientId` render only for a signed-in physician (Auth0 Universal Login via `@auth0/auth0-react`). Public sign-up is off and an Auth0 post-login Action (`auth0/actions/`) refuses anyone without the `physician` role, so only invited physicians get in. MFA, passwordless or Google sign-in are tenant settings, not code.
+  - **Why:** F11 shipped with "no login (button only)", so anyone could open patient recordings. Also targets the hackathon's Auth0 track.
+  - **Config:** `VITE_AUTH0_DOMAIN` and `VITE_AUTH0_CLIENT_ID` in `web/.env.local` (public identifiers, not secrets). Without them the physician pages fail closed with a setup card; the patient session never needs Auth0 or the network.
+  - **Known limit:** this gates the UI only. The Supabase anon policies (`supabase/schema.sql`) still allow reads with the anon key; locking the data itself (Supabase third-party auth with Auth0 JWTs) is a later, separate step.
