@@ -4,7 +4,8 @@ Jack's sleeve integration (S1–S3). `sleeveSession.ts` holds the one shared con
 
 **Before connecting, start the bridge** in a terminal and leave it running. Chrome's Web Serial reported "device lost" on every read on our Linux laptop, so the app reads the USB port through this local bridge, and falls back to Web Serial only if the bridge isn't running:
 ```bash
-~/.local/share/pipx/venvs/platformio/bin/python ~/Workspace/motus/firmware/tools/sleeve_bridge.py
+python3 -m pip install pyserial          # once per computer
+python3 firmware/tools/sleeve_bridge.py  # from the repo root; finds the ESP32's port by itself
 ```
 
 Session order with the sleeve:
