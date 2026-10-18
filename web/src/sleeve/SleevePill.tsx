@@ -14,7 +14,11 @@ function liveText(s: ReturnType<typeof useSleeve.getState>): { text: string; bad
   if (sensorStatus() !== 'streaming') {
     if (performance.now() - s.connectedAt < BOOT_GRACE_MS) return { text: 'Starting sensors…', bad: false };
     const { lines, frames } = sleeveStats();
-    if (lines === 0) return { text: 'Board sends nothing · replug USB, reconnect', bad: true };
+    if (lines === 0) {
+      return s.via === 'bridge'
+        ? { text: 'Bridge has no sensor data · check its terminal', bad: true }
+        : { text: 'Board sends nothing · replug USB, reconnect', bad: true };
+    }
     return { text: `No valid frames (${lines} lines, ${frames} frames) · check baud`, bad: true };
   }
   if (s.lostImus.length) return { text: `${s.lostImus.map((n) => IMU_NAMES[n]).join(', ')} lost · check wire`, bad: true };

@@ -18,3 +18,4 @@ pio device monitor      # 921600 baud; type G, P or V,1,1 + Enter to test
 - **Sensors:** our GY-521 boards are MPU6500-compatible clones, so the firmware talks to the registers directly instead of using Adafruit_MPU6050.
 - **Upload speed:** 115200, because the default 460800 failed on the ELEGOO board.
 - `tools/wear_test.py`: worn-sleeve check (ping, stream health, gyro zero while sitting still, both motors at 75%, each IMU responds to movement).
+- `tools/sleeve_bridge.py`: serves the sleeve's lines to the web app on `localhost:8765` (SSE stream + POST commands). Run it before clicking **Connect sleeve**: Chrome's Web Serial fails on our Linux laptop.
