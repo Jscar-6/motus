@@ -64,6 +64,6 @@ Shoulder hike, shoulder flexion and visibility stay with the camera (PLAN.md §6
 
 Session order:
 1. Connect (the board restarts when the port opens).
-2. Zero: sit still for 2 s with the sleeve on.
+2. Zero: after a 5 s countdown to get into position, sit still for 2 s with the sleeve on.
 3. Put the sleeve on.
 4. Capture rest pose.

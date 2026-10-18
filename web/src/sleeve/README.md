@@ -10,6 +10,6 @@ python3 firmware/tools/sleeve_bridge.py  # from the repo root; finds the ESP32's
 
 Session order with the sleeve:
 1. **Connect sleeve:** the board restarts once, when the bridge starts.
-2. **Zero:** sit still for 2 s (the sleeve stays on).
+2. **Zero:** a 5 s countdown gives you time to get into position, then sit still for 2 s (the sleeve stays on).
 3. Put the sleeve on.
 4. **Capture rest pose:** the camera and sleeve rest are captured together.

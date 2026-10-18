@@ -7,6 +7,9 @@ import { connectSleeve, disconnectSleeve, sleeveStats, useSleeve, zeroSleeve } f
 
 // Opening the port restarts the ESP32: about 2.5 s to boot plus its 2 s start-up zero before frames flow again.
 const BOOT_GRACE_MS = 6000;
+// SOURCE: requested by Ehan: time after clicking Zero for the patient to get into the zero position (sitting still,
+// sleeve on) before the 2 s gyro measurement starts.
+export const ZERO_COUNTDOWN_S = 5;
 const BTN = 'pressable h-6 cursor-pointer rounded-full px-3 transition-colors duration-150 [@media(hover:hover)]:hover:bg-white/20';
 
 /** One-line status text for a connected sleeve. */
@@ -33,11 +36,23 @@ function liveText(s: ReturnType<typeof useSleeve.getState>): { text: string; bad
 export default function SleevePill({ pillClass }: { pillClass: string }) {
   const s = useSleeve();
   const [, setTick] = useState(0);
+  const [zeroAt, setZeroAt] = useState<number | null>(null);  // when the countdown sends `G`; null = no countdown
   useEffect(() => {
     // Stream health and rate live outside React state, so re-read them twice a second.
     const id = window.setInterval(() => setTick((n) => n + 1), 500);
     return () => window.clearInterval(id);
   }, []);
+  useEffect(() => {
+    // Tick the countdown, then zero; dropped if the sleeve disconnects first.
+    if (zeroAt === null) return;
+    if (s.conn !== 'live') return setZeroAt(null);
+    const id = window.setInterval(() => {
+      if (performance.now() < zeroAt) return setTick((n) => n + 1);
+      setZeroAt(null);
+      void zeroSleeve();
+    }, 100);
+    return () => window.clearInterval(id);
+  }, [zeroAt, s.conn]);
 
   if (s.conn === 'off' || s.conn === 'error') {
     return (
@@ -55,6 +70,15 @@ export default function SleevePill({ pillClass }: { pillClass: string }) {
   }
   if (s.conn === 'connecting') return <div className={clsx(pillClass, 'px-3.5')}>Sleeve · connecting…</div>;
   if (s.conn === 'zeroing') return <div className={clsx(pillClass, 'px-3.5')}>Zeroing · hold still 2 s</div>;
+  if (zeroAt !== null) {
+    const left = Math.max(1, Math.ceil((zeroAt - performance.now()) / 1000));
+    return (
+      <div role="group" aria-label="Sleeve" className={pillClass}>
+        <span className="tabular whitespace-nowrap px-2.5" aria-live="assertive">Get into position · zero in {left}</span>
+        <button type="button" className={BTN} onClick={() => setZeroAt(null)}>Cancel</button>
+      </div>
+    );
+  }
 
   const status = liveText(s);
   return (
@@ -65,8 +89,8 @@ export default function SleevePill({ pillClass }: { pillClass: string }) {
       <button
         type="button"
         className={BTN}
-        title="Sit still for 2 seconds (the sleeve can stay on)"
-        onClick={() => void zeroSleeve()}
+        title={`Starts in ${ZERO_COUNTDOWN_S} s, then sit still for 2 seconds (the sleeve can stay on)`}
+        onClick={() => setZeroAt(performance.now() + ZERO_COUNTDOWN_S * 1000)}
       >
         Zero
       </button>
