@@ -1,6 +1,6 @@
 # arm
 
-Daniel's 3D arm model (F7): a stippled "PLEASE PUT SLEEVE ON" that morphs into a dotted, bone-rigged arm. `ArmViewer` fills its parent and is mounted inside `ArmSlot` on the patient view and the therapist card. The canvas is transparent, so it sits on the paper or white card. Visual constants are hand-tuned in `armConfig.ts`.
+Daniel's 3D arm model (F7): a stippled "PUT ARM IN VIEW" that morphs into a dotted, bone-rigged arm. `ArmViewer` fills its parent and is mounted inside `ArmSlot` on the patient view and the therapist card. The canvas is transparent, so it sits on the paper or white card. Visual constants are hand-tuned in `armConfig.ts`.
 
 | File | Role |
 | --- | --- |
@@ -9,15 +9,16 @@ Daniel's 3D arm model (F7): a stippled "PLEASE PUT SLEEVE ON" that morphs into a
 | `particles.ts` | Dot geometry and the morph shaders (GPU bone skinning) |
 | `textSampler.ts` | Stipples the message into dots using the Tanker display font |
 | `PoseFusion.ts` | Blends sleeve IMUs with camera angles into an `ArmPose` since calibration |
+| `VisionFollow.ts` | Smoothed side-view upper arm and forearm angles from the camera, so the arm copies the video with no calibration |
 | `armInput.ts` | `pushSensorFrame`, sensor status, `toThreeQuat`, and the 2D camera angle estimate |
 | `simSensor.ts` | Demo sleeve: connects the A3 fake sleeve through `sleeve/sleeveSession` |
 
 ## How live data plugs in
 
 - Sleeve: `sleeve/sleeveSession` calls `pushSensorFrame(frame)` for each `D,` line. Status goes `offline`, `streaming`, `stale` (after `staleAfterMs`).
-- Camera: nothing to wire. The viewer reads `useLive.getState().latest.pose` and `.aspect`, which works on both pages and never opens a second webcam.
+- Camera: nothing to wire. The viewer reads `useLive.getState().latest.pose` and `.aspect`, which works on both pages and never opens a second webcam. The moment the arm is visible, the words morph into the arm, which then copies the video's side view (`ArmRig.followImage`): same image-plane angles, turned ~17° toward the viewer, mirrored for a left-side view. The view re-centers and zooms to keep the whole arm in frame. When the hand leaves the video frame for half a second, the arm morphs back into the words.
 - Sleeve-to-body mapping: with a sleeve rest pose, `PoseFusion` uses `sleeveBodyRotations()` (S2, `lib/orientation.ts`). Without one (e.g. replay), it falls back to rotation since its own calibration, through `remapSensorQuat` (identity).
-- The arm only follows live data after `setDrive(true)` and a `calibrate()` (rest pose for IMUs and camera angles). Camera-only works without the sleeve.
+- The sleeve only drives the arm after `setDrive(true)` and a `calibrate()` (rest pose for IMUs and camera angles); otherwise the camera drives it.
 
 ## Window API
 
@@ -25,6 +26,5 @@ Daniel's 3D arm model (F7): a stippled "PLEASE PUT SLEEVE ON" that morphs into a
 
 ## Open TODOs
 
-- Implement `remapSensorQuat` once the IMU mounting is known (S2).
 - Morph to the arm automatically when the sleeve starts streaming.
 - Validate the drive mapping (axes and signs) against the real sleeve and camera, then consider turning drive on by default.

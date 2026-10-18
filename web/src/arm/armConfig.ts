@@ -2,7 +2,7 @@
 
 export const armConfig = {
   particleCount: 2600,                          // dots shared by the text and the arm
-  textLines: ['PLEASE PUT', 'SLEEVE ON'],       // stippled message, one entry per line
+  textLines: ['PUT ARM', 'IN VIEW'],           // stippled message, one entry per line
   textWorldWidth: 9.5,                          // width of the text block in world units
   morphDuration: 2.6,                           // seconds for a full text <-> arm transition
   reducedMorphDuration: 0.4,                    // same, when the user prefers reduced motion

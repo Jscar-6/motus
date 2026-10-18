@@ -17,4 +17,4 @@ Components of the physician's patient overview (`/physician/:patientId`, F11, Fi
 | `useRecordingNote.ts` | One cached coach note per recording, built from its stored peaks and flag counts |
 | `useTypewriter.ts` | Character-by-character reveal (instant under reduced motion) |
 
-The arm card uses `ArmViewer replay`, which follows the pose in the live store. Playback writes the recording's samples to that store, so the arm, alert tint and coach context stay in sync with the video.
+The arm card uses `ArmViewer`, which follows the pose in the live store. Playback writes the recording's samples to that store, so the arm, alert tint and coach context stay in sync with the video.
