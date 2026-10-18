@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import Badge from '../../ui/Badge';
 import { EASE_OUT, useMaterialize } from '../../patient/motion';
+import { useSlideIn } from '../slideIn';
 import { initials, pct, relative } from '../format';
 import type { SeverityLevel } from '../severity';
 import { tintOf, type Entry } from './model';
@@ -27,12 +28,15 @@ function useJustChanged(signature: string): number {
   return pulse;
 }
 
-/** A patient row; moves smoothly when the ranking changes and turns amber when the patient needs attention. */
-export default function PatientRow({ entry, delay, onOpen }: { entry: Entry; delay: number; onOpen: (id: string, el: HTMLElement) => void }) {
+/** A patient row; slides in as page item `order` (or fades in when null, for rows added later), moves smoothly when the ranking changes and turns amber when the patient needs attention. */
+export default function PatientRow({ entry, order, onOpen }: { entry: Entry; order: number | null; onOpen: (id: string, el: HTMLElement) => void }) {
   const { patient, severity, series } = entry;
   const attention = severity.level === 'attention';
   const reduced = useReducedMotion();
-  const enter = useMaterialize({ delay, y: 12, blur: 6, duration: 0.5 });
+  const [firstOrder] = useState(order);
+  const slide = useSlideIn(firstOrder ?? 0);
+  const fade = useMaterialize({ y: 12, blur: 6, duration: 0.5 });
+  const enter = firstOrder === null ? fade : slide;
   const pulse = useJustChanged(entry.signature);
   const label = `${patient.name}, ${LEVEL_LABEL[severity.level].toLowerCase()}${severity.pct === null ? '' : `, ${pct(severity.pct)} of time compensating`}. Open recordings`;
 

@@ -1,11 +1,13 @@
-// Landing: wordmark, setup steps and one button that asks for the webcam; the lens then grows into the session's video panel.
+// Landing: wordmark, setup steps and one button that asks for the webcam; the lens then grows into the session's video panel,
+// while the physician link fades the whole page out instead.
 import { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
+import { prefetchOverview } from '../db/hooks';
 import Lens from '../landing/Lens';
 import Button from '../ui/Button';
 import Wordmark from '../ui/Wordmark';
-import PatientSwitcher from '../recording/PatientSwitcher';
 import { rectOf, type FlipOrigin } from '../landing/useFlipFrom';
 import { EASE_OUT, useMaterialize } from '../patient/motion';
 
@@ -20,8 +22,10 @@ const STEPS = [
 ] as const;
 const CAPTIONS = { idle: 'waiting for camera…', requesting: 'requesting access…', denied: 'waiting for camera…', ready: 'camera ready' } as const;
 const LEAVE = { opacity: 0, y: -12, transition: { duration: 0.25, ease: 'easeOut' } } as const;
+const FADE = { opacity: 0, transition: { duration: 0.25, ease: 'easeOut' } } as const;
 
 type Phase = keyof typeof CAPTIONS;
+type Exit = 'morph' | 'fade';  // morph: the lens stays to grow into the session panel; fade: everything fades out together
 
 /** Camera glyph that inherits the button's text colour. */
 function CameraIcon() {
@@ -40,6 +44,7 @@ export default function Landing() {
   const [phase, setPhase] = useState<Phase>('idle');
   const [message, setMessage] = useState<string>(MESSAGES.blocked);
   const [granted, setGranted] = useState(false);
+  const [exit, setExit] = useState<Exit>('morph');
   const lensRef = useRef<HTMLDivElement>(null);
   const wordmarkRef = useRef<HTMLDivElement>(null);
   const copy = useMaterialize({ delay: 0.1, y: 12, blur: 6 });
@@ -62,6 +67,14 @@ export default function Landing() {
       ? { from: 'landing', at: Date.now(), lensRect: rectOf(lensRef.current), wordmarkRect: rectOf(wordmarkRef.current) }
       : undefined;
     navigate(path, { state });
+  }
+
+  /** Fade the whole page out while the physician overview's code and data load, so it can slide in complete. */
+  function goToPhysician() {
+    import('./Physician').catch(() => undefined);
+    prefetchOverview();
+    flushSync(() => setExit('fade'));
+    navigate('/physician');
   }
 
   /** Go to the patient session. */
@@ -88,22 +101,25 @@ export default function Landing() {
     }
   }
 
+  const fade = exit === 'fade';
+  const leave = reduced || fade ? undefined : LEAVE;
+
   return (
     <motion.main
       initial={{ opacity: 1 }}
-      exit={reduced ? { opacity: 0, transition: { duration: 0.2 } } : { opacity: 1, transition: { duration: 0.25 } }}
+      exit={reduced ? { opacity: 0, transition: { duration: 0.2 } } : fade ? FADE : { opacity: 1, transition: { duration: 0.25 } }}
       className="relative flex min-h-dvh flex-col items-center gap-8 px-4 py-8 text-ink sm:px-8 lg:px-[72px]"
     >
-      <motion.div aria-hidden exit={{ opacity: 0, transition: { duration: 0.25 } }} className="fixed inset-0 bg-canvas" />
+      <motion.div aria-hidden exit={fade ? undefined : { opacity: 0, transition: { duration: 0.25 } }} className="fixed inset-0 bg-canvas" />
 
       <header className="relative flex w-full items-center justify-center">
         <div ref={wordmarkRef}>
           <Wordmark />
         </div>
-        <motion.div {...login} exit={reduced ? undefined : LEAVE} className="absolute right-0 top-1/2 -translate-y-1/2">
+        <motion.div {...login} exit={leave} className="absolute right-0 top-1/2 -translate-y-1/2">
           <Button
             variant="quiet"
-            onClick={() => goTo('/physician')}
+            onClick={goToPhysician}
             className="!h-8 gap-1.5 !px-3.5 text-[0.7rem] uppercase tracking-[0.08em]"
           >
             Physician login
@@ -113,7 +129,7 @@ export default function Landing() {
       </header>
 
       <div className="relative flex w-full flex-1 flex-col-reverse items-center justify-center gap-10 lg:flex-row lg:gap-24">
-        <motion.div {...copy} exit={reduced ? undefined : LEAVE} className="flex w-full max-w-[480px] flex-col items-start gap-6">
+        <motion.div {...copy} exit={leave} className="flex w-full max-w-[480px] flex-col items-start gap-6">
           <h2 className="display-lg sm:text-[3.5rem]">Your camera becomes a therapist’s eye.</h2>
           <p className="text-[1.125rem] leading-[1.55] text-ink-2">
             Personalized physical therapy for stroke patients. Please allow camera access to get started.
@@ -146,18 +162,17 @@ export default function Landing() {
               </li>
             ))}
           </ol>
-          <PatientSwitcher />
         </motion.div>
 
         <motion.div {...lens} className="flex w-full max-w-[460px] flex-col items-center gap-4">
           <Lens ref={lensRef} />
-          <motion.p exit={reduced ? undefined : LEAVE} role="status" className="eyebrow tabular">
+          <motion.p exit={leave} role="status" className="eyebrow tabular">
             {CAPTIONS[phase]}
           </motion.p>
         </motion.div>
       </div>
 
-      <motion.footer {...footer} exit={reduced ? undefined : LEAVE} className="relative text-center text-ink-2">
+      <motion.footer {...footer} exit={leave} className="relative text-center text-ink-2">
         Made by Ehan Shah, Daniel Cao, Himmet Dhaliwal, Jack Scarlett
       </motion.footer>
     </motion.main>

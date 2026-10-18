@@ -1,5 +1,5 @@
 // Line graph of every patient's share of time compensating per session, with the patients needing attention in red.
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import { EASE_OUT } from '../../patient/motion';
 import { pct, stamp } from '../format';
@@ -13,6 +13,9 @@ const Y_TICKS = [0, 0.25, 0.5, 0.75, 1];
 const X_TICKS = 4;
 const MUTED = 'var(--color-ink-3)';
 const HOT = 'var(--color-bad)';
+const DRAW_S = 0.7;     // line draw-on duration
+const STAGGER_S = 0.04; // gap between successive lines starting to draw
+const ARRIVE_S = 0.35;  // the strong ease-out has covered ~90% of the line by now, so the end dot and name fade in to meet it
 
 interface Pt { x: number; y: number; t: number; v: number }
 interface Line { entry: Entry; pts: Pt[]; hot: boolean; labelY: number }
@@ -37,16 +40,18 @@ function short(name: string): string {
   return name.length > NAME_MAX ? `${name.slice(0, NAME_MAX - 1)}…` : name;
 }
 
-/** Responsive SVG line chart; hovering or focusing a line highlights it and shows a tooltip. */
-export default function TrendChart({ entries }: { entries: Entry[] }) {
+/** Responsive SVG line chart whose lines draw on `drawAfter` seconds after mount; hovering or focusing a line highlights it and shows a tooltip. */
+export default function TrendChart({ entries, drawAfter = 0 }: { entries: Entry[]; drawAfter?: number }) {
   const box = useRef<HTMLDivElement>(null);
   const reduced = useReducedMotion();
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [hover, setHover] = useState<Hover | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = box.current;
     if (!el) return undefined;
+    const { width, height } = el.getBoundingClientRect();
+    setSize({ w: width, h: height });
     const observer = new ResizeObserver(([e]) => setSize({ w: e.contentRect.width, h: e.contentRect.height }));
     observer.observe(el);
     return () => observer.disconnect();
@@ -89,14 +94,15 @@ export default function TrendChart({ entries }: { entries: Entry[] }) {
     return line.pts.reduce((best, p, i) => (Math.abs(p.x - x) < Math.abs(line.pts[best].x - x) ? i : best), 0);
   };
 
-  if (!withData.length) {
-    return <p className="grid h-full place-items-center px-6 text-center text-ink-2">No sessions yet: recordings appear here as patients finish them.</p>;
-  }
+  const empty = !withData.length;
 
   return (
     <div ref={box} className="relative size-full">
+      {empty && (
+        <p className="absolute inset-0 grid place-items-center px-6 text-center text-ink-2">No sessions yet: recordings appear here as patients finish them.</p>
+      )}
       {w > 0 && h > 0 && (
-        <svg width={w} height={h} className="absolute inset-0 overflow-visible" role="group" aria-label="Share of time compensating per session, one line per patient">
+        <svg width={w} height={h} className="absolute inset-0 overflow-visible" style={{ opacity: empty ? 0 : 1, transition: 'opacity 300ms var(--ease-out)' }} aria-hidden={empty} role="group" aria-label="Share of time compensating per session, one line per patient">
           {Y_TICKS.map((v) => {
             const y = M.top + (1 - v) * ph;
             return (
@@ -106,7 +112,7 @@ export default function TrendChart({ entries }: { entries: Entry[] }) {
               </g>
             );
           })}
-          {Array.from({ length: X_TICKS }, (_, k) => {
+          {!empty && Array.from({ length: X_TICKS }, (_, k) => {
             const t = t0 + ((t1 - t0) * k) / (X_TICKS - 1);
             const x = M.left + 6 + (k / (X_TICKS - 1)) * (pw - 12);
             return (
@@ -150,23 +156,25 @@ export default function TrendChart({ entries }: { entries: Entry[] }) {
                       style={{ strokeWidth: focused ? 3 : line.hot ? 2.25 : 1.5, transition: 'stroke-width 150ms ease-out' }}
                       initial={{ pathLength: reduced ? 1 : 0 }}
                       animate={{ pathLength: 1 }}
-                      transition={{ duration: 0.7, ease: EASE_OUT, delay: k * 0.04 }}
+                      transition={{ duration: DRAW_S, ease: EASE_OUT, delay: drawAfter + k * STAGGER_S }}
                     />
                     <path d={d} fill="none" stroke="transparent" strokeWidth="16" strokeLinecap="round" strokeLinejoin="round" />
                   </>
                 )}
-                <circle cx={last.x} cy={last.y} r={focused ? 5 : 3.5} fill={color} style={{ transition: 'r 150ms ease-out' }} />
-                <circle cx={last.x} cy={last.y} r="12" fill="transparent" />
+                <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, ease: EASE_OUT, delay: reduced ? 0 : drawAfter + k * STAGGER_S + ARRIVE_S }}>
+                  <circle cx={last.x} cy={last.y} r={focused ? 5 : 3.5} fill={color} style={{ transition: 'r 150ms ease-out' }} />
+                  <circle cx={last.x} cy={last.y} r="12" fill="transparent" />
+                  <text
+                    x={last.x + 10}
+                    y={line.labelY + 4}
+                    fontSize="12"
+                    fontWeight={line.hot || focused ? 700 : 400}
+                    fill={line.hot ? HOT : 'var(--color-ink-2)'}
+                  >
+                    {short(line.entry.patient.name)}
+                  </text>
+                </motion.g>
                 {focused && hover && <circle cx={line.pts[hover.i].x} cy={line.pts[hover.i].y} r="4.5" fill="#fff" stroke={color} strokeWidth="2" />}
-                <text
-                  x={last.x + 10}
-                  y={line.labelY + 4}
-                  fontSize="12"
-                  fontWeight={line.hot || focused ? 700 : 400}
-                  fill={line.hot ? HOT : 'var(--color-ink-2)'}
-                >
-                  {short(line.entry.patient.name)}
-                </text>
               </g>
             );
           })}

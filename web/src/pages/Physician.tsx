@@ -1,15 +1,16 @@
 // Physician overview (F11, Figma 21:2): every patient ranked by how much they compensate, with a trend graph.
+// Nothing shows until the data is in; then each item slides in from the right, top to bottom.
 import { useEffect, useMemo, useRef, useState, type UIEvent } from 'react';
-import { motion, useReducedMotion } from 'motion/react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { Link, useNavigate } from 'react-router-dom';
 import { hasDatabase } from '../db/supabase';
 import { usePatients, useRecordings } from '../db/hooks';
-import { readFlipOrigin, rectOf, useFlipFrom, type FlipOrigin } from '../landing/useFlipFrom';
-import { useMaterialize } from '../patient/motion';
+import { rectOf, type FlipOrigin } from '../landing/useFlipFrom';
 import { buildEntries } from '../physician/overview/model';
 import PatientList from '../physician/overview/PatientList';
-import { EmptyCard, ErrorCard, SetupCard, SkeletonList } from '../physician/overview/States';
+import { EmptyCard, ErrorCard, SetupCard } from '../physician/overview/States';
 import TrendChart from '../physician/overview/TrendChart';
+import { SLIDE_SETTLED_S, slideDelay, useSlideIn } from '../physician/slideIn';
 import Wordmark from '../ui/Wordmark';
 
 const COLLAPSE_AT = 24;   // scrollTop (px) past which the graph slides out
@@ -18,6 +19,7 @@ const MIN_OVERFLOW = 32;  // list must still scroll by this much after the graph
 const MAX_WASH = 0.12;    // strongest red tint of the canvas, when everyone needs attention
 const COLUMN = 'mx-auto w-full max-w-[64rem]';  // one content column shared by the graph and the patient rows so their edges line up
 const GUTTER = { scrollbarWidth: 'thin', scrollbarGutter: 'stable both-edges' } as const;  // reserve the scrollbar's space on both sides so the graph and list columns stay equal
+const SLOW_MS = 700;      // still loading after this long: show a quiet loading line instead of an empty canvas
 
 /** The /physician page. */
 export default function Physician() {
@@ -25,21 +27,26 @@ export default function Physician() {
   const recordings = useRecordings();
   const navigate = useNavigate();
   const reduced = useReducedMotion();
-  const { state } = useLocation();
-  const [origin] = useState(() => readFlipOrigin(state));
   const brandRef = useRef<HTMLAnchorElement>(null);
   const graphRef = useRef<HTMLDivElement>(null);
   const graphHeight = useRef(0);
   const [collapsed, setCollapsed] = useState(false);
-  useFlipFrom(brandRef, origin?.wordmarkRect, 'text');
-  const brand = useMaterialize({ y: 8, blur: 6 });
-  const card = useMaterialize({ delay: 0.1, y: 16, blur: 8 });
+  const [slow, setSlow] = useState(false);
+  const brand = useSlideIn(0);
+  const card = useSlideIn(1);
 
   const entries = useMemo(() => buildEntries(patients.data, recordings.data), [patients.data, recordings.data]);
   const attention = entries.filter((e) => e.severity.level === 'attention').length;
   const wash = entries.length ? Math.min(attention / entries.length, 1) * MAX_WASH : 0;
   const loading = patients.loading || recordings.loading;
   const error = patients.error ?? recordings.error;
+  const ready = !hasDatabase() || !loading;
+
+  useEffect(() => {
+    if (ready) return undefined;
+    const id = window.setTimeout(() => setSlow(true), SLOW_MS);
+    return () => window.clearTimeout(id);
+  }, [ready]);
 
   useEffect(() => {
     if (!collapsed && graphRef.current) graphHeight.current = graphRef.current.offsetHeight;
@@ -64,24 +71,40 @@ export default function Physician() {
   const slide = reduced ? '' : 'calc(100% + 2rem)';
   const body = !hasDatabase() ? <SetupCard />
     : error ? <ErrorCard message={error} />
-    : loading ? <div className={COLUMN}><SkeletonList /></div>
-    : !entries.length ? <EmptyCard />
+    : !loading && !entries.length ? <EmptyCard />
     : null;
 
   return (
     <motion.main
       initial={{ opacity: 1 }}
       exit={{ opacity: 0, transition: { duration: reduced ? 0.2 : 0.25, ease: 'easeOut' } }}
-      className="flex min-h-dvh flex-col p-4 sm:p-6 lg:h-dvh lg:overflow-hidden"
+      className="relative flex min-h-dvh flex-col overflow-x-clip p-4 sm:p-6 lg:h-dvh lg:overflow-hidden"
       style={{ backgroundColor: `rgb(181 56 43 / ${wash})`, transition: 'background-color 600ms ease-out' }}
     >
-      <motion.div {...(origin ? {} : brand)} className="mb-4 flex shrink-0 justify-center">
-        <Link ref={brandRef} to="/" aria-label="TrueReach, back to start" className="pressable inline-block" style={{ transitionProperty: 'transform' }}>
-          <Wordmark size="md" />
-        </Link>
-      </motion.div>
+      <AnimatePresence>
+        {!ready && slow && (
+          <motion.p
+            key="loading"
+            role="status"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { duration: 0.3, ease: 'easeOut' } }}
+            exit={{ opacity: 0, transition: { duration: 0.15, ease: 'easeOut' } }}
+            className="eyebrow pointer-events-none absolute inset-0 grid place-items-center"
+          >
+            Loading patients…
+          </motion.p>
+        )}
+      </AnimatePresence>
 
-      {body ? <div className="flex flex-1 flex-col">{body}</div> : (
+      {ready && (
+        <motion.div {...brand} className="mb-4 flex shrink-0 justify-center">
+          <Link ref={brandRef} to="/" aria-label="TrueReach, back to start" className="pressable inline-block" style={{ transitionProperty: 'transform' }}>
+            <Wordmark size="md" />
+          </Link>
+        </motion.div>
+      )}
+
+      {!ready ? null : body ? <div className="flex flex-1 flex-col">{body}</div> : (
         <>
           <div
             className="grid shrink-0"
@@ -108,16 +131,16 @@ export default function Physician() {
                     {attention ? `${attention} ${attention === 1 ? 'patient needs' : 'patients need'} attention` : 'Nobody needs attention'}
                   </p>
                 </div>
-                <div className="min-h-0 flex-1"><TrendChart entries={entries} /></div>
+                <div className="min-h-0 flex-1"><TrendChart entries={entries} drawAfter={slideDelay(1) + SLIDE_SETTLED_S} /></div>
                 <p className="text-[0.75rem] leading-tight text-ink-3">The attention line is a display setting, not a clinically validated cutoff.</p>
               </section>
               </motion.div>
             </div>
           </div>
 
-          <motion.div layoutScroll onScroll={onScroll} className="-mx-4 min-h-0 flex-1 overscroll-contain px-4 pt-1 lg:overflow-y-auto" style={{ ...GUTTER, scrollbarColor: 'var(--color-ink-3) transparent' }}>
+          <motion.div layoutScroll onScroll={onScroll} className="-mx-4 min-h-0 flex-1 overscroll-contain px-4 pt-1 lg:overflow-y-auto lg:overflow-x-hidden" style={{ ...GUTTER, scrollbarColor: 'var(--color-ink-3) transparent' }}>
             <div className={COLUMN}>
-              <PatientList entries={entries} onOpen={open} />
+              <PatientList entries={entries} onOpen={open} firstOrder={2} />
             </div>
           </motion.div>
         </>
