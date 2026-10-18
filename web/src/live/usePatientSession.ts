@@ -1,6 +1,7 @@
 // Patient-tab session: plain webcam, relayed to the therapist tab as JPEG frames. Analysis is not run here;
 // when it exists it plugs in by pushing samples and flags into the live store from this session.
 import { useEffect, useState, type RefObject } from 'react';
+import { useCamera } from '../vision/camera';
 import { startCamera, stopCamera } from '../vision/pose';
 import { openLiveChannel } from './channel';
 import { resetLive, useLive } from './store';
@@ -22,6 +23,7 @@ interface SessionState {
 /** Run the patient's live session while the calling component is mounted. */
 export function usePatientSession({ videoRef }: Options): SessionState {
   const [state, setState] = useState<SessionState>({ status: 'starting' });
+  const cameraId = useCamera((s) => s.chosen?.deviceId ?? null);  // a new camera choice restarts the session
 
   useEffect(() => {
     let cancelled = false;
@@ -129,7 +131,7 @@ export function usePatientSession({ videoRef }: Options): SessionState {
       resetLive();
       useLive.setState({ source: 'none', restCaptured: false });
     };
-  }, [videoRef]);
+  }, [videoRef, cameraId]);
 
   return state;
 }

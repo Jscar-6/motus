@@ -2,6 +2,7 @@
 // Model and WASM are served locally (web/public), so pose tracking needs no internet during the demo.
 import { FilesetResolver, PoseLandmarker, type NormalizedLandmark } from '@mediapipe/tasks-vision';
 import type { Point2, PoseFrame, Side } from '../lib/types';
+import { openCamera } from './camera';
 
 const WASM_PATH = '/mediapipe-wasm';
 const MODEL_PATH = '/models/pose_landmarker_lite.task';
@@ -12,12 +13,9 @@ const LANDMARKS: Record<Side, Record<'ear' | 'shoulder' | 'elbow' | 'wrist' | 'h
   right: { ear: 8, shoulder: 12, elbow: 14, wrist: 16, hip: 24 },
 };
 
-/** Start the laptop webcam and play it in the given video element. */
+/** Start the chosen webcam (camera.ts) and play it in the given video element. */
 export async function startCamera(video: HTMLVideoElement): Promise<MediaStream> {
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
-    audio: false,
-  });
+  const stream = await openCamera();
   video.srcObject = stream;
   await video.play();
   return stream;

@@ -11,6 +11,7 @@ import type { CompLabel, FrameFeatures } from '../lib/types';
 import { pushFlag, pushSample, useLive } from '../live/store';
 import type { LiveSample } from '../live/types';
 import { EASE_OUT } from '../patient/motion';
+import CameraPicker from './CameraPicker';
 import CameraView from './CameraView';
 import { graspPoint, targetFromClick } from './target';
 import { useVisionModel } from './useVisionModel';
@@ -150,12 +151,13 @@ export default function VisionOverlay({ trailing }: { trailing?: ReactNode }) {
 
   return (
     <>
-      {/* The box keeps the video's aspect ratio and covers the panel, so clicks and overlays stay in video coordinates.
+      {/* The box keeps the video's aspect ratio and fits inside the panel, so the whole frame shows (nothing is cropped)
+          and clicks and overlays stay in video coordinates.
           CameraView's own status text is hidden: the Session panel already shows starting and error states. */}
       <div className="absolute inset-0 overflow-hidden [container-type:size] [&_p]:hidden">
         <div
           className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-crosshair"
-          style={{ aspectRatio: v.aspect, width: `max(100cqw, calc(100cqh * ${v.aspect}))` }}
+          style={{ aspectRatio: v.aspect, width: `min(100cqw, calc(100cqh * ${v.aspect}))` }}
           onClick={(e) => v.setTarget(targetFromClick(e.clientX, e.clientY, e.currentTarget.querySelector('video')!, v.near))}
         >
           <CameraView side={v.side} onPose={v.onPose} debug />
@@ -198,6 +200,7 @@ export default function VisionOverlay({ trailing }: { trailing?: ReactNode }) {
           </button>
           <LiveChip features={v.features} rules={v.rules} />
           <SleevePill pillClass={PILL} />
+          <CameraPicker pillClass={PILL} />
         </div>
         {trailing && <div className="pointer-events-auto shrink-0">{trailing}</div>}
       </div>

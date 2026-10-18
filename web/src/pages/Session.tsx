@@ -76,7 +76,7 @@ function VideoSurface({ videoRef, status, reduced, children }: {
         ref={videoRef}
         playsInline
         muted
-        className="absolute inset-0 size-full object-cover"
+        className="absolute inset-0 size-full object-contain"
         style={{ opacity: status === 'running' ? 1 : 0, transitionProperty: 'opacity', transitionDuration: '500ms', transitionTimingFunction: 'ease' }}
       />
 
